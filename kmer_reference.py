@@ -5,6 +5,7 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
+import json
 from typing import Dict, List, Generator, Tuple
 
 import file_parsers
@@ -33,7 +34,7 @@ def extract_kmers_from_string(sequence: str, kmer_size: int,
                 current_kmer)):
             yield current_kmer, 0
     for i in range(1, len(sequence) - kmer_size + 1):
-        current_kmer = current_kmer[1:].join(sequence[i + kmer_size - 1])
+        current_kmer = current_kmer[1:] + sequence[i + kmer_size - 1]
         if not (remove_wildcard and any(
                 nucleotide in WILDCARD_READINGS for nucleotide in
                 current_kmer)):
@@ -47,16 +48,43 @@ class KmerReference:
         self._genomes_db: Dict[str, ReferencedGenomeStats] = {}
         self._kmer_size = kmer_size
 
+    @property
+    def kmer_db(self) -> Dict[str, Dict[str, List[int]]]:
+        return self._kmer_db
+
+    @property
+    def genomes_db(self) -> Dict[str, ReferencedGenomeStats]:
+        return self._genomes_db
+
     def add_kmers_to_db(self, genome: RawGenome) -> None:
         for kmer in extract_kmers_from_string(genome.sequence, self._kmer_size,
                                               remove_wildcard=True):
-            if kmer[0] not in self._kmer_db:
-                self._kmer_db[kmer[0]] = {}
-            if genome.identifier not in self._kmer_db[kmer[0]]:
-                self._kmer_db[kmer[0]][genome.identifier] = [kmer[1]]
-            else:
-                self._kmer_db[kmer[0]][genome.identifier].append(kmer[1])
+            current_kmer, current_position = kmer
+            if current_kmer not in self._kmer_db:
+                self._kmer_db[current_kmer] = {}
+            if genome.identifier not in self._kmer_db[current_kmer]:
+                # check if it's the first genome added - if so, it's unique
+                if len(self._kmer_db[current_kmer].keys()) == 0:
+                    self._genomes_db[genome.identifier].unique_kmers += 1
+                # if there is another genome already associated with this kmer,
+                # decrease the unique kmer count and increase the multi_mapping
+                elif len(self._kmer_db[current_kmer].keys()) == 1:
+                    other_genome_identifier = next(
+                        iter(self._kmer_db[current_kmer]))
+                    self._genomes_db[other_genome_identifier].unique_kmers -= 1
+                    self._genomes_db[
+                        other_genome_identifier].multi_mapping_kmers += 1
+                # if there is more than one genome associated with this kmer
+                # add the multi mapping kmer to this genome
+                if len(self._kmer_db[current_kmer].keys()) >= 1:
+                    self._genomes_db[
+                        genome.identifier].multi_mapping_kmers += 1
+                self._kmer_db[current_kmer][genome.identifier] = [
+                    current_position]
 
+            else:
+                self._kmer_db[current_kmer][genome.identifier].append(
+                    current_position)
 
     def build_kmer_reference(self, genome_file: str) -> bool:
         """
@@ -75,7 +103,11 @@ class KmerReference:
                     pass
                 else:
                     self._genomes_db[genome.identifier] = ReferencedGenomeStats(
-                        genome.identifier)
+                        genome.sequence)
                     self.add_kmers_to_db(genome)
         except Exception as e:
             return False
+
+
+    def genome_db_to_json(self) -> str:
+        return json.dumps({k:v.to_json() for k, v in self.genomes_db.items()})

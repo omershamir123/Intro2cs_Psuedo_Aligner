@@ -2,6 +2,9 @@
 
 import argparse
 
+import facade
+
+
 def readargs(args=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
                     prog='Biosequence project',
@@ -79,7 +82,7 @@ def readargs(args=None) -> argparse.Namespace:
 def main() -> None:
     args=readargs()
     print(args.kmer_size)
+    facade.start_program(args)
 
 if __name__=="__main__":
     main()
-    print(1)

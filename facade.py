@@ -5,20 +5,26 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
-
+import json
 from argparse import Namespace
 from typing import Dict, Callable
 
 import validators
+from kmer_reference import KmerReference
 
 
 def build_reference(args: Namespace) -> bool:
     try:
-        validators.validate_above_value(args.kmersize, 0, allow_equality=False)
+        validators.validate_above_value(args.kmer_size, 0, allow_equality=False)
+        reference = KmerReference(args.kmer_size)
+        reference.build_kmer_reference(args.genomefile)
+        with open("kmer_reference.json", "w") as f:
+            json.dump(reference.kmer_db, f)
+            dictionary = reference.genome_db_to_json()
+            json.dump(dictionary, f)
+        # print(reference.kmer_db)
     except ValueError:
         return False
-
-
 
 
 def initialize_function_calls() -> Dict[str, Callable[[Namespace], bool]]:
@@ -30,6 +36,7 @@ def initialize_function_calls() -> Dict[str, Callable[[Namespace], bool]]:
     function_calls["reference"] = build_reference
     return function_calls
 
+
 def start_program(args: Namespace) -> None:
     """
     This function starts the program with the given parameters from the user
@@ -37,6 +44,7 @@ def start_program(args: Namespace) -> None:
     :return: None
     """
     function_calls = initialize_function_calls()
-    if args.command not in function_calls:
+    if args.task not in function_calls:
+        print("Invalid task")
         return
-    function_calls[args.command](args)
+    function_calls[args.task](args)

@@ -5,6 +5,8 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
+import json
+
 ALLOWED_DNA_VALUES = ["A", "T", "C", "G", "N"]
 WILDCARD_READINGS = ["N"]
 
@@ -54,3 +56,6 @@ class ReferencedGenomeStats:
     @multi_mapping_kmers.setter
     def multi_mapping_kmers(self, value):
         self._multi_mapping_kmers = value
+
+    def to_json(self):
+        return json.dumps({"total_bases":self._total_bases,"unique_kmers": self._unique_kmers,"multi_mapping_kmers":self._multi_mapping_kmers})
