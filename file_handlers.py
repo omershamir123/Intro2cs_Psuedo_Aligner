@@ -13,8 +13,65 @@ from typing import Generator, Optional
 import program_constants
 from genome import ReferencedGenome
 from kmer_reference import KmerReference
-from validators import validate_file_type
+from program_constants import ALLOWED_DNA_VALUES
+from read import Read
+from validators import validate_file_type, validate_values_in_given_list
 
+
+def parse_fastq_file(fastq_file_path:str) -> Generator[Read, None, None]:
+    """
+    This function handles the parsing of the fastq file.
+    First line - header starts with @
+    Second line - Read
+    Third line - +
+    Fourth line - Quality sequence
+    :param fastq_file_path: the path to the fastq file
+    :return: Generator of each Read in the fastq file
+    """
+    try:
+        validate_file_type(fastq_file_path, program_constants.FASTQ_FILE_TYPES)
+    except TypeError as e:
+        print(e)
+        raise
+    try:
+        with open(fastq_file_path, 'r') as fastq_file:
+            header = fastq_file.readline()
+            while True:
+                # TODO check if file is empty without any read
+                if not header or not header.startswith("@"):
+                    raise ValueError("Fastq file does not start with '@' line")
+                read_value = fastq_file.readline()
+                if not read_value:
+                    raise ValueError("No sequence in Fastq file for the read {}".format(header))
+                if not fastq_file.readline().startswith("+"):
+                    raise ValueError("Fastq file does not contain a third + line")
+                quality = fastq_file.readline()
+                if not quality:
+                    raise ValueError("No quality sequence in Fastq file for the read {}".format(header))
+                if len(quality) != len(read_value):
+                    raise ValueError("Fastq file header {} does not have matching ")
+
+                validate_values_in_given_list(read_value, ALLOWED_DNA_VALUES)
+                yield Read(header, read_value, quality)
+                header = fastq_file.readline()
+                if not header:
+                    break
+
+    except ValueError:
+        print(f'file not in fastq format: {fastq_file_path}')
+        raise
+    except FileNotFoundError:
+        print(f'Fastq file not found: {fastq_file_path}')
+        raise
+    except PermissionError:
+        print(f'Permission denied: {fastq_file_path}')
+        raise
+    except IOError:
+        print(f'I/O error: {fastq_file_path}')
+        raise
+    except Exception as e:
+        print(f'Unexpected error: {fastq_file_path}')
+        raise
 
 def parse_fasta_file(fasta_file_path: str) -> Generator[ReferencedGenome, None, None]:
     """
@@ -37,7 +94,6 @@ def parse_fasta_file(fasta_file_path: str) -> Generator[ReferencedGenome, None, 
             current_genome_index = 0
             while True:
                 current_genome = [current_line[1:], ""]
-                current_genome[0] = current_line.rstrip("\n")
                 current_line = fasta_file.readline()
                 while current_line and not current_line.startswith(">"):
                     current_line = "".join(current_line.split())

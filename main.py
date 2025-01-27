@@ -55,7 +55,7 @@ def readargs(args=None) -> argparse.Namespace:
     #coverage
     parser.add_argument('--genomes',
                         )
-    parser.add_argument('--regions',
+    parser.add_argument('--coverage',  # fixed regions-->coverage
                         )
     parser.add_argument('--window-size',
                         type=int,

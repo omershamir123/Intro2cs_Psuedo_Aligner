@@ -11,13 +11,15 @@ class ReferencedGenome:
     """
     This class represents a raw genome - right after it's read from the fasta file
     """
-    def __init__(self, identifier:str, sequence:str, index_in_fasta:int):
+    def __init__(self, identifier:str, sequence:str, index_in_fasta:int) -> None:
         self._identifier = identifier
         self._sequence = sequence
         self._index_in_fasta = index_in_fasta
         self._total_bases = len(sequence)
         self._unique_kmers = 0
         self._multi_mapping_kmers = 0
+        self._unique_reads = 0
+        self._ambiguous_reads = 0
 
     @property
     def identifier(self):
