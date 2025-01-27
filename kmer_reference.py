@@ -8,10 +8,10 @@
 import json
 from typing import Dict, List, Generator, Tuple
 
-import file_parsers
+import file_handlers
 import validators
-from genome import ReferencedGenomeStats, ALLOWED_DNA_VALUES, RawGenome, \
-    WILDCARD_READINGS
+from genome import ReferencedGenome
+from program_constants import ALLOWED_DNA_VALUES, WILDCARD_READINGS
 
 
 def extract_kmers_from_string(sequence: str, kmer_size: int,
@@ -25,9 +25,10 @@ def extract_kmers_from_string(sequence: str, kmer_size: int,
     :param remove_wildcard: should we remove the kmers containing a wildcard
     :return: Tuple with the first parameter being the kmer, the second being its position in the initial sequence
     """
-    if kmer_size > len(sequence):
-        raise StopIteration
-    else:
+    # if kmer_size > len(sequence):
+    #     raise StopIteration
+    # else:
+    if kmer_size <= len(sequence):
         current_kmer = sequence[:kmer_size]
         if not (remove_wildcard and any(
                 nucleotide in WILDCARD_READINGS for nucleotide in
@@ -45,7 +46,7 @@ class KmerReference:
 
     def __init__(self, kmer_size: int):
         self._kmer_db: Dict[str, Dict[str, List[int]]] = {}
-        self._genomes_db: Dict[str, ReferencedGenomeStats] = {}
+        self._genomes_db: Dict[str, ReferencedGenome] = {}
         self._kmer_size = kmer_size
 
     @property
@@ -53,10 +54,10 @@ class KmerReference:
         return self._kmer_db
 
     @property
-    def genomes_db(self) -> Dict[str, ReferencedGenomeStats]:
+    def genomes_db(self) -> Dict[str, ReferencedGenome]:
         return self._genomes_db
 
-    def add_kmers_to_db(self, genome: RawGenome) -> None:
+    def add_kmers_to_db(self, genome: ReferencedGenome) -> None:
         for kmer in extract_kmers_from_string(genome.sequence, self._kmer_size,
                                               remove_wildcard=True):
             current_kmer, current_position = kmer
@@ -95,19 +96,22 @@ class KmerReference:
         :return: True if the build was successful, False otherwise
         """
         try:
-            for genome in file_parsers.parse_fasta_file(genome_file):
+            for genome in file_handlers.parse_fasta_file(genome_file):
                 validators.validate_values_in_given_list(genome.sequence,
                                                          ALLOWED_DNA_VALUES)
                 if genome.identifier in self._genomes_db:
-                    # TODO - add case when genome appears twice in fasta
-                    pass
+                    return False
                 else:
-                    self._genomes_db[genome.identifier] = ReferencedGenomeStats(
-                        genome.sequence)
+                    self._genomes_db[genome.identifier] = genome
                     self.add_kmers_to_db(genome)
         except Exception as e:
             return False
 
+        return True
 
-    def genome_db_to_json(self) -> str:
-        return json.dumps({k:v.to_json() for k, v in self.genomes_db.items()})
+
+    def genome_db_to_json(self) -> Dict[str,Dict[str, List[int]]]:
+        return {k:v.genome_ref_to_dict() for k, v in self.genomes_db.items()}
+
+    def to_json(self):
+        return json.dumps({"Kmers":self._kmer_db, "Summary": self.genome_db_to_json()})

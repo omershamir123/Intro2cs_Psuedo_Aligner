@@ -8,15 +8,28 @@
 from typing import Any, Type, Iterable, List
 
 
-def general_file_validation(file_path: str, actions_needed: str) -> None:
+def validate_not_empty(param: Any) -> bool:
     """
-    This function receives a file path and makes sure it's a valid file path
-    that can be opened and read
+    This function checks whether a parameter equals to None
+    :param param: the parameter to be checked
+    :return: None if not None, otherwise raises ValueError
+    """
+    return param is not None
+
+def validate_file_type(file_path: str, file_types: List[str], message: str = None) -> None:
+    """
+    This function receives a file path and makes sure it's of the same type
     :param file_path: string containing the file path
-    :param actions_needed: a string containing "artwb" being the possible actions when opening a file
-    :return: None if the file is readable, Raises ValueError otherwise
+    :param file_types: a list containing the file types that are valid for the file
+    :param message: message to be printed if the file is not of the given file_type
+    :return: None if the file is in the correct type, otherwise raises a TypeError
     """
-    pass
+    if not validate_not_empty(file_path):
+        raise TypeError("The parameter file_path is empty")
+    if not any(file_path.endswith(file_type) for file_type in file_types):
+        message = message if message is not None else "File {} must be of types {}".format(
+            file_path, file_types)
+        raise TypeError(message)
 
 
 def validate_type(param: Any, param_type: Type, message: str = None) -> None:
@@ -43,6 +56,8 @@ def validate_above_value(param: Any, threshold: Any, allow_equality: bool,
     :param message: message to be printed if the parameter is not of the given type
     :return: None if the parameter is of the given type, Raises ValueError otherwise
     """
+    if not validate_not_empty(param):
+        raise TypeError("The parameter is empty to be checked that it's above {} is None".format(threshold))
     if not allow_equality:
         if param <= threshold:
             message = message if message is not None else "Parameter must be greater than {}".format(
@@ -67,3 +82,4 @@ def validate_values_in_given_list(iter: Iterable, allowed_values: List[Any], mes
     if not valid:
         message = message if message is not None else "All items must be in {}".format(allowed_values)
         raise ValueError(message)
+

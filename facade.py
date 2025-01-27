@@ -7,33 +7,84 @@
 # NOTES:
 import json
 from argparse import Namespace
-from typing import Dict, Callable
+from typing import Dict, Callable, Optional
 
+import file_handlers
 import validators
 from kmer_reference import KmerReference
 
+from validators import validate_not_empty
 
-def build_reference(args: Namespace) -> bool:
+
+def build_reference(kmer_size: int, genomefile: str) -> Optional[KmerReference]:
+    """
+    This function receives the kmer_size and the genome file path and builds a kmer-reference object
+    If one of the steps in the build phase isn't successful, the returned object is None
+    :param genomefile: the path to the FASTA file
+    :param kmer_size: the size of each Kmer in our reference
+    :return: the KmerReference object if the build was successful, otherwise None
+    """
     try:
-        validators.validate_above_value(args.kmer_size, 0, allow_equality=False)
-        reference = KmerReference(args.kmer_size)
-        reference.build_kmer_reference(args.genomefile)
-        with open("kmer_reference.json", "w") as f:
-            json.dump(reference.kmer_db, f)
-            dictionary = reference.genome_db_to_json()
-            json.dump(dictionary, f)
-        # print(reference.kmer_db)
-    except ValueError:
-        return False
+        validators.validate_above_value(kmer_size, 0, allow_equality=False)
+    except (ValueError, TypeError) as e:
+        print(e)
+        return None
+    reference = KmerReference(kmer_size)
+    build_successful = reference.build_kmer_reference(genomefile)
+    # If build was not successful for various reasons, the function will not continue on
+    if build_successful:
+        return reference
+    return None
 
 
-def initialize_function_calls() -> Dict[str, Callable[[Namespace], bool]]:
+def reference_command(args: Namespace) -> None:
+    """
+    This function carries out the reference command - of building a reference and writing it to a kdb file
+    :param args: the arguments given by the user
+    :return: None
+    """
+    reference = build_reference(args.kmer_size, args.genomefile)
+    if reference is not None:
+        if validate_not_empty(args.referencefile):
+            # TODO Think about the case when the write was unsuccessful - is there a need to return something?
+            file_handlers.write_to_kdb_file(args.referencefile, reference)
+        else:
+            print("There was a problem with the given kdb file")
+
+def dumpref_command(args: Namespace) -> None:
+    """
+    This function carries out the dumpref command
+    :param args:
+    :return:
+    """
+    # TODO make sure there is a definitive was to know the parameters (there are no extra for example)
+    if validate_not_empty(args.genomefile) and validate_not_empty(args.kmer_size):
+        reference = build_reference(args.kmer_size, args.genomefile)
+    else:
+        reference = file_handlers.decompress_kdb_file(args.referencefile)
+    if reference is not None:
+        print(reference.to_json())
+
+
+def align_command(args: Namespace) -> None:
+    # TODO make sure there is a definitive was to know the parameters (there are no extra for example)
+    if validate_not_empty(args.genomefile) and validate_not_empty(args.kmer_size):
+        reference = build_reference(args.kmer_size, args.genomefile)
+    else:
+        reference = file_handlers.decompress_kdb_file(args.referencefile)
+    if reference is not None:
+        pseudo
+
+
+# TODO Callable return type
+def initialize_function_calls() -> Dict[str, Callable[[Namespace], None]]:
     """
     This function initializes the function dictionary for each task in the program
     :return: Dictionary of task names to functions
     """
-    function_calls: Dict[str, Callable[[Namespace], bool]] = {}
-    function_calls["reference"] = build_reference
+    function_calls: Dict[str, Callable[[Namespace], None]] = {}
+    function_calls["reference"] = reference_command
+    function_calls["dumpref"] = dumpref_command
     return function_calls
 
 

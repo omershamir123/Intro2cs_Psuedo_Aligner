@@ -7,17 +7,17 @@
 # NOTES:
 import json
 
-ALLOWED_DNA_VALUES = ["A", "T", "C", "G", "N"]
-WILDCARD_READINGS = ["N"]
-
-
-class RawGenome:
+class ReferencedGenome:
     """
     This class represents a raw genome - right after it's read from the fasta file
     """
-    def __init__(self, identifier:str, sequence:str):
+    def __init__(self, identifier:str, sequence:str, index_in_fasta:int):
         self._identifier = identifier
         self._sequence = sequence
+        self._index_in_fasta = index_in_fasta
+        self._total_bases = len(sequence)
+        self._unique_kmers = 0
+        self._multi_mapping_kmers = 0
 
     @property
     def identifier(self):
@@ -27,15 +27,9 @@ class RawGenome:
     def sequence(self):
         return self._sequence
 
-
-
-class ReferencedGenomeStats:
-
-    def __init__(self, value: str):
-        self._total_bases = len(value)
-        self._unique_kmers = 0
-        self._multi_mapping_kmers = 0
-
+    @property
+    def index_in_fasta(self):
+        return self._index_in_fasta
 
     @property
     def total_bases(self):
@@ -57,5 +51,10 @@ class ReferencedGenomeStats:
     def multi_mapping_kmers(self, value):
         self._multi_mapping_kmers = value
 
-    def to_json(self):
-        return json.dumps({"total_bases":self._total_bases,"unique_kmers": self._unique_kmers,"multi_mapping_kmers":self._multi_mapping_kmers})
+    def genome_ref_to_dict(self):
+        return {"total_bases": self._total_bases,
+                           "unique_kmers": self._unique_kmers,
+                           "multi_mapping_kmers": self._multi_mapping_kmers}
+
+
+
