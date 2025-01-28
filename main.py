@@ -32,10 +32,10 @@ def readargs(args=None) -> argparse.Namespace:
                         help="fastq reads file",
                         )
     parser.add_argument('-m', '--unique-threshold',
-                        help="unique k-mer threshold",
+                        help="unique k-mer threshold", default=1, type=int
                         )
     parser.add_argument('-p', '--ambiguous-threhold',
-                        help="ambiguous k-mer threshold",
+                        help="ambiguous k-mer threshold", default=1, type=int
                         )
                         
     #align+rc

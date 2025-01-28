@@ -9,13 +9,12 @@ import json
 from typing import Dict, List, Generator, Tuple
 
 import file_handlers
-import validators
 from genome import ReferencedGenome
-from program_constants import ALLOWED_DNA_VALUES, WILDCARD_READINGS
+from program_constants import WILDCARD_READINGS
 
 
 def extract_kmers_from_string(sequence: str, kmer_size: int,
-                              remove_wildcard: bool) -> \
+                              remove_wildcard: bool = True) -> \
         Generator[Tuple[str, int], None, None]:
     """
     This function receives a sequence and returns all kmers within that sequence.
@@ -25,9 +24,6 @@ def extract_kmers_from_string(sequence: str, kmer_size: int,
     :param remove_wildcard: should we remove the kmers containing a wildcard
     :return: Tuple with the first parameter being the kmer, the second being its position in the initial sequence
     """
-    # if kmer_size > len(sequence):
-    #     raise StopIteration
-    # else:
     if kmer_size <= len(sequence):
         current_kmer = sequence[:kmer_size]
         if not (remove_wildcard and any(
@@ -58,8 +54,15 @@ class KmerReference:
         return self._genomes_db
 
     def add_kmers_to_db(self, genome: ReferencedGenome) -> None:
-        for kmer in extract_kmers_from_string(genome.sequence, self._kmer_size,
-                                              remove_wildcard=True):
+        """
+        This function populates the KmerDB and updates the genomes DB based on the given genomes kmers
+        It checks for each kmer in the genome whether it is its first appearance in the reference and adds it
+        If it's the first time the specific kmer appears in the current genome, it updates the unique and ambiguous kmers counts
+        for all genomes with that kmer within their sequence
+        :param genome: The current genome to map
+        :return: None
+        """
+        for kmer in extract_kmers_from_string(genome.sequence, self._kmer_size):
             current_kmer, current_position = kmer
             if current_kmer not in self._kmer_db:
                 self._kmer_db[current_kmer] = {}
@@ -97,21 +100,22 @@ class KmerReference:
         """
         try:
             for genome in file_handlers.parse_fasta_file(genome_file):
-                validators.validate_values_in_given_list(genome.sequence,
-                                                         ALLOWED_DNA_VALUES)
                 if genome.identifier in self._genomes_db:
-                    return False
+                    raise ValueError(
+                        "There are two genomes in the fasta file with the header {}".format(
+                            genome.identifier))
                 else:
                     self._genomes_db[genome.identifier] = genome
                     self.add_kmers_to_db(genome)
         except Exception as e:
+            print(e)
             return False
 
         return True
 
-
-    def genome_db_to_json(self) -> Dict[str,Dict[str, List[int]]]:
-        return {k:v.genome_ref_to_dict() for k, v in self.genomes_db.items()}
+    def genome_db_to_json(self) -> Dict[str, Dict[str, List[int]]]:
+        return {k: v.genome_ref_to_dict() for k, v in self.genomes_db.items()}
 
     def to_json(self):
-        return json.dumps({"Kmers":self._kmer_db, "Summary": self.genome_db_to_json()})
+        return json.dumps(
+            {"Kmers": self._kmer_db, "Summary": self.genome_db_to_json()})

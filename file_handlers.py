@@ -13,12 +13,11 @@ from typing import Generator, Optional
 import program_constants
 from genome import ReferencedGenome
 from kmer_reference import KmerReference
-from program_constants import ALLOWED_DNA_VALUES
 from read import Read
-from validators import validate_file_type, validate_values_in_given_list
+from validators import validate_file_type
 
 
-def parse_fastq_file(fastq_file_path:str) -> Generator[Read, None, None]:
+def parse_fastq_file(fastq_file_path: str) -> Generator[Read, None, None]:
     """
     This function handles the parsing of the fastq file.
     First line - header starts with @
@@ -37,43 +36,40 @@ def parse_fastq_file(fastq_file_path:str) -> Generator[Read, None, None]:
         with open(fastq_file_path, 'r') as fastq_file:
             header = fastq_file.readline()
             while True:
-                # TODO check if file is empty without any read
                 if not header or not header.startswith("@"):
                     raise ValueError("Fastq file does not start with '@' line")
                 read_value = fastq_file.readline()
                 if not read_value:
-                    raise ValueError("No sequence in Fastq file for the read {}".format(header))
+                    raise ValueError(
+                        "No sequence in Fastq file for the read {}".format(
+                            header))
                 if not fastq_file.readline().startswith("+"):
-                    raise ValueError("Fastq file does not contain a third + line")
+                    raise ValueError(
+                        "Fastq file does not contain a third + line")
                 quality = fastq_file.readline()
                 if not quality:
-                    raise ValueError("No quality sequence in Fastq file for the read {}".format(header))
-                if len(quality) != len(read_value):
-                    raise ValueError("Fastq file header {} does not have matching ")
-
-                validate_values_in_given_list(read_value, ALLOWED_DNA_VALUES)
+                    raise ValueError(
+                        "No quality sequence in Fastq file for the read {}".format(
+                            header))
                 yield Read(header, read_value, quality)
                 header = fastq_file.readline()
                 if not header:
                     break
 
     except ValueError:
-        print(f'file not in fastq format: {fastq_file_path}')
         raise
     except FileNotFoundError:
-        print(f'Fastq file not found: {fastq_file_path}')
-        raise
+        raise FileNotFoundError(f'Fastq file not found: {fastq_file_path}')
     except PermissionError:
-        print(f'Permission denied: {fastq_file_path}')
-        raise
+        raise PermissionError(f'Permission denied: {fastq_file_path}')
     except IOError:
-        print(f'I/O error: {fastq_file_path}')
-        raise
+        raise IOError(f'I/O error: {fastq_file_path}')
     except Exception as e:
-        print(f'Unexpected error: {fastq_file_path}')
-        raise
+        raise Exception(f'Unexpected error: {fastq_file_path}')
 
-def parse_fasta_file(fasta_file_path: str) -> Generator[ReferencedGenome, None, None]:
+
+def parse_fasta_file(fasta_file_path: str) -> Generator[
+    ReferencedGenome, None, None]:
     """
     This function handles the parsing of the fasta file - header line starts with >
     and all subsequent lines contain DNA samples
@@ -90,7 +86,6 @@ def parse_fasta_file(fasta_file_path: str) -> Generator[ReferencedGenome, None, 
             current_line = fasta_file.readline()
             if not current_line or not current_line.startswith(">"):
                 raise ValueError("Fasta file does not start with '>' line")
-            # TODO check if file is empty without any genome
             current_genome_index = 0
             while True:
                 current_genome = [current_line[1:], ""]
@@ -99,6 +94,10 @@ def parse_fasta_file(fasta_file_path: str) -> Generator[ReferencedGenome, None, 
                     current_line = "".join(current_line.split())
                     current_genome[1] += current_line
                     current_line = fasta_file.readline()
+                if current_genome[1] == "":
+                    raise ValueError(
+                        "No genome data found for the header line {}".format(
+                            current_genome[0]))
                 yield ReferencedGenome(current_genome[0], current_genome[1],
                                        current_genome_index)
                 current_genome_index += 1
@@ -106,20 +105,16 @@ def parse_fasta_file(fasta_file_path: str) -> Generator[ReferencedGenome, None, 
                     break
 
     except ValueError:
-        print(f'file not in fasta format: {fasta_file_path}')
         raise
     except FileNotFoundError:
-        print(f'Fasta file not found: {fasta_file_path}')
-        raise
+        raise FileNotFoundError(f'Fasta file not found: {fasta_file_path}')
     except PermissionError:
         print(f'Permission denied: {fasta_file_path}')
         raise
     except IOError:
-        print(f'I/O error: {fasta_file_path}')
-        raise
+        raise IOError(f'I/O error: {fasta_file_path}')
     except Exception as e:
-        print(f'Unexpected error: {fasta_file_path}')
-        raise
+        raise Exception(f'Unexpected error: {fasta_file_path}')
 
 
 def write_to_kdb_file(kdb_file_path: str,
@@ -179,10 +174,12 @@ def decompress_kdb_file(kdb_file_path: str) -> Optional[KmerReference]:
     try:
         kmer_reference = pickle.loads(pickled_object)
     except (UnpicklingError, TypeError) as e:
-        print("There was a problem unpickling the kdb file decompressed content")
+        print(
+            "There was a problem unpickling the kdb file decompressed content")
         print(e)
         return None
     except Exception as e:
-        print("There was an unexpected problem unpickling the kdb file decompressed content")
+        print(
+            "There was an unexpected problem unpickling the kdb file decompressed content")
         return None
     return kmer_reference

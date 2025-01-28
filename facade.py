@@ -73,7 +73,7 @@ def align_command(args: Namespace) -> None:
     else:
         reference = file_handlers.decompress_kdb_file(args.referencefile)
     if reference is not None:
-        pseudo
+        pass
 
 
 # TODO Callable return type
@@ -85,6 +85,7 @@ def initialize_function_calls() -> Dict[str, Callable[[Namespace], None]]:
     function_calls: Dict[str, Callable[[Namespace], None]] = {}
     function_calls["reference"] = reference_command
     function_calls["dumpref"] = dumpref_command
+    function_calls["align"] = align_command
     return function_calls
 
 
