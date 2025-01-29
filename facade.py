@@ -5,13 +5,14 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
-import json
 from argparse import Namespace
 from typing import Dict, Callable, Optional
 
 import file_handlers
+import pseudo_aligner
 import validators
 from kmer_reference import KmerReference
+from program_constants import KDB_FILE_TYPES, ALN_FILE_TYPES
 
 from validators import validate_not_empty
 
@@ -43,49 +44,114 @@ def reference_command(args: Namespace) -> None:
     :param args: the arguments given by the user
     :return: None
     """
+    if not validate_not_empty(args.genomefile) or not validate_not_empty(
+            args.kmer_size) or not validate_not_empty(args.reference_file):
+        print(
+            "For the reference command - a genome file, a reference file and a kmer-size must be provided")
+        return
+
     reference = build_reference(args.kmer_size, args.genomefile)
     if reference is not None:
+        file_handlers.write_to_pickle_file(args.referencefile, reference,
+                                           KDB_FILE_TYPES)
+
+
+def extract_reference(args: Namespace) -> Optional[KmerReference]:
+    """
+    This function checks the arguements and extracts the reference file either by building it
+    or by running the build reference function.
+    If genome file, a kmer-reference file and a kmer-size are provided, it's an invalid input
+    :param args: the arguments given by the user
+    :return: if the parameters are valid - a kmer-reference object else None
+    """
+    if validate_not_empty(args.genomefile) and validate_not_empty(
+            args.kmer_size):
         if validate_not_empty(args.referencefile):
-            # TODO Think about the case when the write was unsuccessful - is there a need to return something?
-            file_handlers.write_to_kdb_file(args.referencefile, reference)
-        else:
-            print("There was a problem with the given kdb file")
+            print(
+                "Both a genome file and a reference file were provided - invalid input for the {} command".format(
+                    args.task))
+            return None
+        reference = build_reference(args.kmer_size, args.genomefile)
+    else:
+        if not validate_not_empty(args.referencefile):
+            print(
+                "No reference file given - invalid input for the {} command".format(
+                    args.task))
+            return None
+        reference = file_handlers.decompress_pickle_file(args.referencefile,
+                                                         KDB_FILE_TYPES)
+    return reference
+
 
 def dumpref_command(args: Namespace) -> None:
     """
     This function carries out the dumpref command
-    :param args:
-    :return:
+    :param args: the arguments given by the user
+    :return: None
     """
-    # TODO make sure there is a definitive was to know the parameters (there are no extra for example)
-    if validate_not_empty(args.genomefile) and validate_not_empty(args.kmer_size):
-        reference = build_reference(args.kmer_size, args.genomefile)
-    else:
-        reference = file_handlers.decompress_kdb_file(args.referencefile)
+    reference = extract_reference(args)
     if reference is not None:
         print(reference.to_json())
 
 
 def align_command(args: Namespace) -> None:
-    # TODO make sure there is a definitive was to know the parameters (there are no extra for example)
-    if validate_not_empty(args.genomefile) and validate_not_empty(args.kmer_size):
-        reference = build_reference(args.kmer_size, args.genomefile)
-    else:
-        reference = file_handlers.decompress_kdb_file(args.referencefile)
+    """
+    This function handles the align command - runs the pseudo align algorithm and saves the output to an aln file
+    The function also runs validity checks that the user has entered a valid combination of arguments
+    For example the user must enter a value for the reads file and the align file
+    :param args: arguments given by the user
+    :return: None
+    """
+    if not validate_not_empty(args.alignfile) or not validate_not_empty(
+            args.reads):
+        print(
+            "For the alignment command - an align file path and a reads file must be provided")
+        return
+    reference = extract_reference(args)
     if reference is not None:
-        pass
+        align_output = pseudo_aligner.align_algorithm(args.reads, reference,
+                                                      args.unique_threshold,
+                                                      args.ambiguous_threhold, **vars(args))
+        if align_output is not None:
+            aln_file_object = align_output.convert_to_aln_object()
+            file_handlers.write_to_pickle_file(args.alignfile, aln_file_object,
+                                               ALN_FILE_TYPES)
 
 
-# TODO Callable return type
+def dumpalign_command(args: Namespace) -> None:
+    align_file_object = None
+    if validate_not_empty(args.alignfile):
+        if any(validate_not_empty(argument) for argument in
+               [args.reads, args.referencefile, args.genomefile,
+                args.kmer_size]):
+            print(
+                "For the dumpalign command - if -a is a given flag, no other flags can be inputted")
+            return
+        align_file_object = file_handlers.decompress_pickle_file(args.alignfile,
+                                                                 ALN_FILE_TYPES)
+    else:
+        if not validate_not_empty(args.reads):
+            print(
+                "No reads file given - invalid input for the dumpalign command")
+            return
+        reference = extract_reference(args)
+        if reference is not None:
+            align_output = pseudo_aligner.align_algorithm(args.reads, reference,
+                                                          args.unique_threshold,
+                                                          args.ambiguous_threhold, **vars(args))
+            align_file_object = align_output.convert_to_aln_object()
+    if align_file_object is not None:
+        print(align_file_object.to_json())
+
+
 def initialize_function_calls() -> Dict[str, Callable[[Namespace], None]]:
     """
     This function initializes the function dictionary for each task in the program
     :return: Dictionary of task names to functions
     """
-    function_calls: Dict[str, Callable[[Namespace], None]] = {}
-    function_calls["reference"] = reference_command
-    function_calls["dumpref"] = dumpref_command
-    function_calls["align"] = align_command
+    function_calls: Dict[str, Callable[[Namespace], None]] = {
+        "reference": reference_command, "dumpref": dumpref_command,
+        "align": align_command, "dumpalign": dumpalign_command}
     return function_calls
 
 

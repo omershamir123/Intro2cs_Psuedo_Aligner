@@ -8,11 +8,12 @@
 import gzip
 import pickle
 from pickle import UnpicklingError
-from typing import Generator, Optional
+from typing import Generator, Optional, List, Union
 
 import program_constants
 from genome import ReferencedGenome
 from kmer_reference import KmerReference
+from pseudo_aligner import AlnFileDataObject
 from read import Read
 from validators import validate_file_type
 
@@ -38,11 +39,13 @@ def parse_fastq_file(fastq_file_path: str) -> Generator[Read, None, None]:
             while True:
                 if not header or not header.startswith("@"):
                     raise ValueError("Fastq file does not start with '@' line")
+                header = str.strip(header, '\n')
                 read_value = fastq_file.readline()
                 if not read_value:
                     raise ValueError(
                         "No sequence in Fastq file for the read {}".format(
                             header))
+                read_value = str.rstrip(read_value, "\n")
                 if not fastq_file.readline().startswith("+"):
                     raise ValueError(
                         "Fastq file does not contain a third + line")
@@ -51,6 +54,7 @@ def parse_fastq_file(fastq_file_path: str) -> Generator[Read, None, None]:
                     raise ValueError(
                         "No quality sequence in Fastq file for the read {}".format(
                             header))
+                quality = str.rstrip(quality, "\n")
                 yield Read(header, read_value, quality)
                 header = fastq_file.readline()
                 if not header:
@@ -88,6 +92,7 @@ def parse_fasta_file(fasta_file_path: str) -> Generator[
                 raise ValueError("Fasta file does not start with '>' line")
             current_genome_index = 0
             while True:
+                current_line = str.rstrip(current_line, "\n")
                 current_genome = [current_line[1:], ""]
                 current_line = fasta_file.readline()
                 while current_line and not current_line.startswith(">"):
@@ -117,69 +122,71 @@ def parse_fasta_file(fasta_file_path: str) -> Generator[
         raise Exception(f'Unexpected error: {fasta_file_path}')
 
 
-def write_to_kdb_file(kdb_file_path: str,
-                      kmer_reference: KmerReference) -> bool:
+def write_to_pickle_file(pickle_file_path: str,
+                      object_to_write: object, supported_file_types:List[str]) -> bool:
     """
-    This function handles the writing of the kmer_reference object to our own kdb file
-    The kmer_reference will be pickled and its content stored in a gzip file
-    :param kdb_file_path: the path to the kdb file
-    :param kmer_reference: the kmer reference object to write
-    :return: True if the kdb file was written, False otherwise
+    This function handles the writing of a python object to a pickle file
+    The python object will be pickled and its content stored in a gzip file
+    :param supported_file_types: the file types that are supported for this object
+    :param pickle_file_path: the path to the pickle file
+    :param object_to_write: the  object to write
+    :return: True if the file was written, False otherwise
     """
     try:
-        validate_file_type(kdb_file_path, program_constants.KDB_FILE_TYPES)
+        validate_file_type(pickle_file_path, supported_file_types)
     except TypeError as e:
         print(e)
         return False
-    pickled_object = pickle.dumps(kmer_reference)
+    pickled_object = pickle.dumps(object_to_write)
     try:
-        with open(kdb_file_path, 'wb') as kdb_file:
+        with open(pickle_file_path, 'wb') as kdb_file:
             kdb_file.write(gzip.compress(pickled_object))
     except (FileNotFoundError, PermissionError, IOError) as e:
-        print("An error occurred while writing to the given reference file.")
+        print("An error occurred while writing to the given file {}.".format(pickle_file_path))
         return False
     except Exception as e:
         print(
-            "An unexpected error occurred while writing to the given reference file.")
+            "An unexpected error occurred while writing to the given file {}.".format(pickle_file_path))
         return False
     return True
 
 
-def decompress_kdb_file(kdb_file_path: str) -> Optional[KmerReference]:
+def decompress_pickle_file(pickle_file_path: str, supported_file_types:List[str]) -> Union[KmerReference, AlnFileDataObject, None]:
     """
-    This function receives a path to a kdb file, checks its integrity and decompresses the kdb file
+    This function receives a path to a pickled file, checks its integrity and decompresses the file
     as well as unpickles it
-    :param kdb_file_path: the path to the kdb file
-    :return: the KmerReference within the kdb_file
+    :param supported_file_types: the file types that are supported for this object
+    :param pickle_file_path: the path to the kdb file
+    :return: the object within the pickle_file
     """
     try:
-        validate_file_type(kdb_file_path, program_constants.KDB_FILE_TYPES)
+        validate_file_type(pickle_file_path, supported_file_types)
     except TypeError as e:
         print(e)
         return None
     try:
-        with open(kdb_file_path, 'rb') as kdb_file:
+        with open(pickle_file_path, 'rb') as kdb_file:
             pickled_object = gzip.decompress(kdb_file.read())
     except (FileNotFoundError, PermissionError, IOError) as e:
-        print("An error occurred while reading the given kdb file.")
+        print("An error occurred while reading the given file {}.".format(pickle_file_path))
         return None
     except (ValueError, OSError) as e:
-        print("There was an error while decompressing the kdb file")
+        print("There was an error while decompressing the file {}".format(pickle_file_path))
         return None
     except Exception as e:
         print(
-            "An unexpected error occurred while reading the given kdb file.")
+            "An unexpected error occurred while reading the given file.".format(pickle_file_path))
         return None
 
     try:
-        kmer_reference = pickle.loads(pickled_object)
+        returned_object = pickle.loads(pickled_object)
     except (UnpicklingError, TypeError) as e:
         print(
-            "There was a problem unpickling the kdb file decompressed content")
+            "There was a problem unpickling the file's decompressed content. File {}".format(pickle_file_path))
         print(e)
         return None
     except Exception as e:
         print(
-            "There was an unexpected problem unpickling the kdb file decompressed content")
+            "There was an unexpected problem unpickling the file's decompressed content. File {}".format(pickle_file_path))
         return None
-    return kmer_reference
+    return returned_object

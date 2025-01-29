@@ -5,6 +5,8 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
+from typing import Dict
+
 from program_constants import ALLOWED_DNA_VALUES
 from validators import validate_values_in_given_list
 
@@ -74,7 +76,10 @@ class ReferencedGenome:
     def ambiguous_reads(self, value: int) -> None:
         self._ambiguous_reads = value
 
-    def genome_ref_to_dict(self) -> dict:
+    def genome_ref_to_dict(self) -> Dict[str, int]:
         return {"total_bases": self._total_bases,
                 "unique_kmers": self._unique_kmers,
                 "multi_mapping_kmers": self._multi_mapping_kmers}
+
+    def genome_mapped_to_dict(self) -> Dict[str, int]:
+        return {"unique_reads": self._unique_reads,"ambiguous_reads": self._ambiguous_reads}

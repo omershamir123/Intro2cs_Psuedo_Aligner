@@ -113,9 +113,9 @@ class KmerReference:
 
         return True
 
-    def genome_db_to_json(self) -> Dict[str, Dict[str, List[int]]]:
+    def genome_db_to_dict(self) -> Dict[str, Dict[str, int]]:
         return {k: v.genome_ref_to_dict() for k, v in self.genomes_db.items()}
 
-    def to_json(self):
+    def to_json(self) ->str:
         return json.dumps(
-            {"Kmers": self._kmer_db, "Summary": self.genome_db_to_json()})
+            {"Kmers": self._kmer_db, "Summary": self.genome_db_to_dict()})

@@ -7,6 +7,7 @@
 # NOTES:
 from typing import List, Dict, Set
 
+import numpy as np
 from program_constants import *
 from validators import validate_values_in_given_list, validate_above_value
 
@@ -111,3 +112,16 @@ class Read:
     def add_mapped_genome(self, genome: str) -> None:
         self._mapped_genomes.add(genome)
 
+
+    def calculate_mean_quality(self, starting_index:int = 0, ending_index:int = -1) -> np.floating:
+        """
+        This function calculates the mean quality value for the read.
+        Note: Assumes starting,ending >=0 + starting<=ending
+        :param starting_index: Optional, 0 default - if supplied - calculates the mean quality from the starting index
+        :param ending_index: Optional - if supplied - calculates the mean quality until the ending index (excluding)
+        :return: the mean value
+        """
+        if ending_index == -1:
+            ending_index = self._length
+
+        return np.mean(np.array(self.quality[starting_index:ending_index]))
