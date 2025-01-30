@@ -39,7 +39,7 @@ def parse_fastq_file(fastq_file_path: str) -> Generator[Read, None, None]:
             while True:
                 if not header or not header.startswith("@"):
                     raise ValueError("Fastq file does not start with '@' line")
-                header = str.strip(header, '\n')
+                header = str.strip(header, '\n')[1:]
                 read_value = fastq_file.readline()
                 if not read_value:
                     raise ValueError(

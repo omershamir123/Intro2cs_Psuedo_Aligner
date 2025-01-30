@@ -1,5 +1,6 @@
 dict1 = {"a": 1, "b": 2}
-
+genome_list = [genome for genome in dict1]
+print(genome_list)
 print(next(iter(dict1))[0])
 for item in dict1.items():
     print(item)

@@ -80,6 +80,7 @@ class Read:
         self._specific_kmers = []
         self._unspecific_kmers = []
         self._reverse_complement: str = reverse_complement(value)
+        self._reversed_quality: List[int] = list(reversed(self._quality))
 
     @property
     def identifier(self) -> str:

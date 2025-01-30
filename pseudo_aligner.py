@@ -123,7 +123,7 @@ class AlnFileDataObject:
         return summary
 
     def to_json(self):
-        return json.dumps({"Statistics":self.read_stats_to_dict(), "Summary":self.genomes_mapped_to_dict()})
+        return json.dumps({"Statistics":self.read_stats_to_dict(), "Summary":self.genomes_mapped_to_dict()}, indent=4)
 
 
 def should_filter_read(read: Read, min_read_quality: int) -> bool:
@@ -153,7 +153,7 @@ def align_algorithm(fastq_file_path: str,
     :param ambiguous_threshold: threshold to distinguish two ambiguously mapped genomes
     :return: None
     """
-    kmer_size = len(next(iter(kmer_reference.kmer_db)))
+    kmer_size = kmer_reference.kmer_size
     aligner_output = PseudoAlignerOutput(kmer_reference)
     min_read_quality = kwargs.get("min_read_quality")
     filter_by_quality = min_read_quality is not None

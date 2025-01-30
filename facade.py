@@ -52,6 +52,11 @@ def reference_command(args: Namespace) -> None:
 
     reference = build_reference(args.kmer_size, args.genomefile)
     if reference is not None:
+        # By now we have built the entire reference from all genomes.
+        # Now, if filer-similar flag is True we check the similarity score between each genome
+        # and update the reference file accordingly
+        if args.filter_similar:
+            print(reference.filter_genomes_logic(args.similarity_threshold))
         file_handlers.write_to_pickle_file(args.referencefile, reference,
                                            KDB_FILE_TYPES)
 
@@ -91,6 +96,8 @@ def dumpref_command(args: Namespace) -> None:
     """
     reference = extract_reference(args)
     if reference is not None:
+        if args.filter_similar:
+            print(reference.filter_genomes_logic(args.similarity_threshold))
         print(reference.to_json())
 
 
