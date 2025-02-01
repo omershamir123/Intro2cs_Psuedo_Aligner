@@ -5,6 +5,8 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
+from textwrap import indent
+
 import numpy as np
 
 import json
@@ -138,8 +140,8 @@ class AlnFileDataObject:
             summary["filtered_hr_kmers"] = self._filtered_hr_kmers
         return summary
 
-    def to_json(self):
-        return json.dumps({"Statistics": self.read_stats_to_dict(),
+    def to_json(self, **kwargs):
+        return json.dumps({"Statistics": self.read_stats_to_dict(**kwargs),
                            "Summary": self.genomes_mapped_to_dict()}, indent=4)
 
     def coverage_statistics_summary(self, min_coverage: int):
@@ -323,6 +325,7 @@ def align_algorithm(fastq_file_path: str,
     # mypy might be unhappy but in the argsparser, there is a default value
     min_read_quality = kwargs.get("min_read_quality")
     filter_by_quality = min_read_quality is not None
+    min_read_quality = int(min_read_quality) if filter_by_quality else None
     check_coverage = kwargs.get("coverage")
     genome_list = aligner_output.genome_list
     if check_coverage:
@@ -415,6 +418,7 @@ def extract_and_map_kmers_from_read(read: Read,
         kmer, kmer_position = kmer_tuple
         # Check if the quality of the kmer from the read is sufficient
         if min_kmer_quality is not None:
+            min_kmer_quality = int(min_kmer_quality)
             mean_quality_of_kmer = read.calculate_mean_quality(kmer_position,
                                                                kmer_position + kmer_size)
             if mean_quality_of_kmer < min_kmer_quality:
@@ -424,6 +428,7 @@ def extract_and_map_kmers_from_read(read: Read,
         if kmer in kmer_reference.kmer_db:
             # Check whether the kmer is mapped to more than max_genomes
             if max_genomes is not None:
+                max_genomes = int(max_genomes)
                 if len(kmer_reference.kmer_db[kmer]) > max_genomes:
                     aligner_output.filtered_hr_kmers += 1
                     continue

@@ -176,7 +176,7 @@ def dumpalign_command(args: Namespace) -> None:
                 return
 
             print(align_file_object.to_coverage_json(args.full_coverage, args.min_coverage))
-        print(align_file_object.to_json())
+        print(align_file_object.to_json(**vars(args)))
 
 
 def initialize_function_calls() -> Dict[str, Callable[[Namespace], None]]:

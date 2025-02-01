@@ -13,7 +13,7 @@ import facade
 import file_handlers
 import main
 from facade import reference_command, dumpref_command, align_command, \
-    dumpalign_command
+    dumpalign_command, start_program
 from file_handlers import decompress_pickle_file
 from program_constants import FASTA_FILE_TYPES, KDB_FILE_TYPES, ALN_FILE_TYPES, \
     FASTQ_FILE_TYPES
@@ -23,13 +23,58 @@ from test_kmer_reference import build_testing_reference, FULL_FASTA_FILE
 from test_pseudo_aligner import FASTQ_FILE_SINGLE_READ
 
 DUMPALIGN_OUTPUT_OF_FULL_FASTA_FILE = {
-    "Statistics": {"unique_mapped_reads": 0,"ambiguous_mapped_reads": 1,"unmapped_reads": 0},
-    "Summary": {"Mouse": {"unique_reads": 0,"ambiguous_reads": 0},
-                "Duck": {"unique_reads": 0,"ambiguous_reads": 1},
-                "Otter": {"unique_reads": 0,"ambiguous_reads": 0},
-                "Turtle": {"unique_reads": 0,"ambiguous_reads": 1},
-                "Moose": {"unique_reads": 0,"ambiguous_reads": 1},
-                "Virus": {"unique_reads": 0,"ambiguous_reads": 0 }}}
+    "Statistics": {"unique_mapped_reads": 0, "ambiguous_mapped_reads": 1,
+                   "unmapped_reads": 0},
+    "Summary": {"Mouse": {"unique_reads": 0, "ambiguous_reads": 0},
+                "Duck": {"unique_reads": 0, "ambiguous_reads": 1},
+                "Otter": {"unique_reads": 0, "ambiguous_reads": 0},
+                "Turtle": {"unique_reads": 0, "ambiguous_reads": 1},
+                "Moose": {"unique_reads": 0, "ambiguous_reads": 1},
+                "Virus": {"unique_reads": 0, "ambiguous_reads": 0}}}
+
+COVERAGE_EXAMPLE_READS = (b"@READ1\nATCGAAAATTTTACAC\n+\n1111111111111111\n"
+                          b"@READ2\nGTGTAAAATTTTCGAT\n+\n1111111111111111")
+
+COVERAGE_OUTPUT_FOR_READS = {"Coverage": {
+    "Mouse": {"covered_bases_unique": 0, "covered_bases_ambiguous": 0,
+              "mean_coverage_unique": 0.0, "mean_coverage_ambiguous": 0.0},
+    "Duck": {"covered_bases_unique": 0, "covered_bases_ambiguous": 0,
+             "mean_coverage_unique": 1.0, "mean_coverage_ambiguous": 0.0},
+    "Otter": {"covered_bases_unique": 0, "covered_bases_ambiguous": 0,
+              "mean_coverage_unique": 0.0, "mean_coverage_ambiguous": 0.0},
+    "Turtle": {"covered_bases_unique": 12, "covered_bases_ambiguous": 0,
+               "mean_coverage_unique": 2.0, "mean_coverage_ambiguous": 0.0},
+    "Moose": {"covered_bases_unique": 0, "covered_bases_ambiguous": 0,
+              "mean_coverage_unique": 0.9, "mean_coverage_ambiguous": 0.0},
+    "Virus": {"covered_bases_unique": 0, "covered_bases_ambiguous": 0,
+              "mean_coverage_unique": 0.0, "mean_coverage_ambiguous": 0.0}},
+    "Details": {"Mouse": {
+        "unique_cov": [0, 0, 0, 0, 0, 0, 0, 0],
+        "ambiguous_cov": [0, 0, 0, 0, 0, 0, 0, 0]},
+        "Duck": {"unique_cov": [1, 1, 1, 1],
+                 "ambiguous_cov": [0, 0, 0,
+                                   0]},
+        "Otter": {
+            "unique_cov": [0, 0, 0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0, 0,
+                           0],
+            "ambiguous_cov": [0, 0, 0, 0, 0, 0,
+                              0, 0, 0, 0, 0, 0,
+                              0, 0, 0, 0, 0, 0,
+                              0, 0, 0]},
+        "Turtle": {
+            "unique_cov": [2, 2, 2, 2, 2, 2, 2,
+                           2, 2, 2, 2, 2],
+            "ambiguous_cov": [0, 0, 0, 0, 0, 0,
+                              0, 0, 0, 0, 0,
+                              0]}, "Moose": {
+            "unique_cov": [0, 1, 1, 1, 1, 1, 1, 1, 1,
+                           1, 1, 1, 1],
+            "ambiguous_cov": [0, 0, 0, 0, 0, 0, 0, 0,
+                              0, 0, 0, 0, 0]},
+        "Virus": {"unique_cov": [0, 0, 0],
+                  "ambiguous_cov": [0, 0, 0]}}}
 
 
 def test_build_reference():
@@ -230,7 +275,8 @@ def test_dumpalign_invalid_input(monkeypatch, capsys):
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     monkeypatch.setattr(sys, "argv",
-                        ["main.py", "-t", "dumpalign", "--genomefile", genome_fasta_file, "-k",
+                        ["main.py", "-t", "dumpalign", "--genomefile",
+                         genome_fasta_file, "-k",
                          "4", "--reads", "reads.fq", "-m", "-1"])
     args = main.readargs(sys.argv[1:])
     dumpalign_command(args)
@@ -262,12 +308,14 @@ def test_dumpalign_3_6(monkeypatch, capsys):
     align_command(args)
 
     monkeypatch.setattr(sys, "argv",
-                        ["main.py", "-t", "dumpalign", "-a", align_file, "-m", "1", "-p", "1"])
+                        ["main.py", "-t", "dumpalign", "-a", align_file, "-m",
+                         "1", "-p", "1"])
     args = main.readargs(sys.argv[1:])
 
     dumpalign_command(args)
     print(capsys.readouterr().out)
-    assert json.loads(capsys.readouterr().out) == json.loads(json.dumps(DUMPALIGN_OUTPUT_OF_FULL_FASTA_FILE))
+    assert json.loads(capsys.readouterr().out) == json.loads(
+        json.dumps(DUMPALIGN_OUTPUT_OF_FULL_FASTA_FILE))
 
     os.remove(align_file)
     os.remove(fastq_file)
@@ -278,12 +326,10 @@ def test_dumpalign_3_6(monkeypatch, capsys):
 def test_dumpalign_3_7(monkeypatch, capsys):
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
-    align_file = create_temporary_file(EMPTY_FILE, ALN_FILE_TYPES[0])
     fastq_file = create_temporary_file(FASTQ_FILE_SINGLE_READ,
                                        FASTQ_FILE_TYPES[0])
 
     kdb_file = create_temporary_file(EMPTY_FILE, KDB_FILE_TYPES[0])
-    reference = build_testing_reference()
     monkeypatch.setattr(sys, "argv",
                         ["main.py", "-t", "reference", "--genomefile",
                          genome_fasta_file, "-k", "4", "--referencefile",
@@ -292,15 +338,16 @@ def test_dumpalign_3_7(monkeypatch, capsys):
     reference_command(args)
 
     monkeypatch.setattr(sys, "argv",
-                        ["main.py", "-t", "dumpalign", "--referencefile", kdb_file, "--reads", fastq_file, "-m",
+                        ["main.py", "-t", "dumpalign", "--referencefile",
+                         kdb_file, "--reads", fastq_file, "-m",
                          "1", "-p", "1"])
     args = main.readargs(sys.argv[1:])
 
     dumpalign_command(args)
 
-    assert json.loads(capsys.readouterr().out) == json.loads(json.dumps(DUMPALIGN_OUTPUT_OF_FULL_FASTA_FILE))
+    assert json.loads(capsys.readouterr().out) == json.loads(
+        json.dumps(DUMPALIGN_OUTPUT_OF_FULL_FASTA_FILE))
 
-    os.remove(align_file)
     os.remove(fastq_file)
     os.remove(kdb_file)
     os.remove(genome_fasta_file)
@@ -326,3 +373,50 @@ def test_dumpalign_3_8(monkeypatch, capsys):
 
     os.remove(fastq_file)
     os.remove(genome_fasta_file)
+
+
+def test_4_3_coverage_dumplalign(monkeypatch, capsys):
+    genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
+                                              FASTA_FILE_TYPES[0])
+    fastq_file = create_temporary_file(COVERAGE_EXAMPLE_READS,
+                                       FASTQ_FILE_TYPES[0])
+
+    monkeypatch.setattr(sys, "argv",
+                        ["main.py", "-t", "dumpalign", "--genomefile",
+                         genome_fasta_file, "-k", "4", "--reads", fastq_file,
+                         "-m",
+                         "1", "-p", "1", "--coverage", "--full-coverage",
+                         "--min-coverage", "2"])
+    args = main.readargs(sys.argv[1:])
+
+    dumpalign_command(args)
+    assert json.loads(str.split(capsys.readouterr().out, '{\n    "Statistics')[
+                          0].strip()) == json.loads(
+        json.dumps(COVERAGE_OUTPUT_FOR_READS))
+
+
+def test_function_calls(monkeypatch):
+    genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
+                                              FASTA_FILE_TYPES[0])
+    kdb_file = create_temporary_file(EMPTY_FILE, KDB_FILE_TYPES[0])
+    monkeypatch.setattr(sys, "argv",
+                        ["main.py", "-t", "reference", "--genomefile",
+                         genome_fasta_file, "-k", "4", "--referencefile",
+                         kdb_file])
+    args = main.readargs(sys.argv[1:])
+    reference = build_testing_reference()
+
+    start_program(args)
+    reference_from_kdb_file = file_handlers.decompress_pickle_file(kdb_file,
+                                                                   KDB_FILE_TYPES)
+    os.remove(genome_fasta_file)
+    os.remove(kdb_file)
+
+    assert reference.kmer_db == reference_from_kdb_file.kmer_db
+
+def test_function_calls_invalid_task(monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv",
+                        ["main.py", "-t", "re1"])
+    args = main.readargs(sys.argv[1:])
+    start_program(args)
+    assert capsys.readouterr().out == "Invalid task\n"
