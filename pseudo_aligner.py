@@ -137,7 +137,7 @@ def should_filter_read(read: Read, min_read_quality: int) -> bool:
 
 
 def align_algorithm(fastq_file_path: str,
-                    kmer_reference: KmerReference, unique_threshold: int,
+                    kmer_reference: KmerReference, current_unique_threshold: int,
                     ambiguous_threshold: int, **kwargs) -> Optional[PseudoAlignerOutput]:
     """
     This function runs the pseudo_align algorithm as given in the instructions.
@@ -147,7 +147,7 @@ def align_algorithm(fastq_file_path: str,
     3. Validate the mapping based on the unspecific kmers
     :param fastq_file_path: the path to the fastq file
     :param kmer_reference: a KmerReference object
-    :param unique_threshold: threshold to distinguish between the highest specific genome to its second highest in the read
+    :param current_unique_threshold: threshold to distinguish between the highest specific genome to its second highest in the read
     :param ambiguous_threshold: threshold to distinguish two ambiguously mapped genomes
     :return: None
     """
@@ -168,13 +168,13 @@ def align_algorithm(fastq_file_path: str,
             current_read_mapping = extract_and_map_kmers_from_read(
                 read,
                 kmer_reference,
-                kmer_size, aligner_output, **kwargs)
+                aligner_output, **kwargs)
             if len(current_read_mapping.specific_kmers) == 0:
                 map_read(read, UNMAPPED_READ)
             else:
                 _map_read_using_specific_kmers(current_read_mapping,
                                                read, kmer_reference,
-                                               unique_threshold)
+                                               current_unique_threshold)
                 if read.read_status == UNIQUE_READ and ambiguous_threshold >= 0:
                     validate_uniqueness_using_unspecific(
                         current_read_mapping, read, kmer_reference,
@@ -209,16 +209,16 @@ def map_read(read, status: READ_STATUS,
 
 def extract_and_map_kmers_from_read(read: Read,
                                     kmer_reference: KmerReference,
-                                    kmer_size: int, aligner_output:PseudoAlignerOutput, **kwargs) -> ReadKmerMapping:
+                                    aligner_output:PseudoAlignerOutput, **kwargs) -> ReadKmerMapping:
     """
     This function extracts the kmers from the read and maps each kmer as specific, unspecific or neither
     It does that based on each kmer's appearance in the kmer_reference
     :param aligner_output: the pseudo aligner output object
     :param read: the current read
     :param kmer_reference: the KmerReference object
-    :param kmer_size: the kmer_size
     :return: The current read's kmer mapping object
     """
+    kmer_size = kmer_reference.kmer_size
     min_kmer_quality = kwargs.get("min_kmer_quality")
     max_genomes = kwargs.get("max_genomes")
     current_read_kmer_classification = ReadKmerMapping()
@@ -286,8 +286,7 @@ def _add_unspecific_kmer_to_classification(kmer: str,
     :param current_read_kmer_classification: the mapping object for a single read
     :return: None
     """
-    for genome in kmer_reference.kmer_db[kmer]:
-        genome_identifier = genome
+    for genome_identifier in kmer_reference.kmer_db[kmer]:
         if genome_identifier not in current_read_kmer_classification.unspecific_kmers_in_genomes:
             current_read_kmer_classification.unspecific_kmers_in_genomes[
                 genome_identifier] = [kmer]
@@ -329,8 +328,7 @@ def _map_read_using_specific_kmers(current_read_mapping: ReadKmerMapping,
             map_read(read, UNIQUE_READ, kmer_reference,
                      genome_identifier)
         else:
-            for genome in current_read_mapping.specific_kmers_in_genomes:
-                genome_identifier = genome
+            for genome_identifier in current_read_mapping.specific_kmers_in_genomes:
                 map_read(read, AMBIGUOUS_READ, kmer_reference,
                          genome_identifier)
 

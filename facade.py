@@ -5,6 +5,7 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
+import json
 from argparse import Namespace
 from typing import Dict, Callable, Optional
 

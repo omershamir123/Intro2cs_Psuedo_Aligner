@@ -130,7 +130,6 @@ def test_extract_and_map_kmers_from_read_with_filter_kmer_quality():
     expected_kmer_mapping.unspecific_kmers_in_genomes["Otter"] = ["TTTT"]
 
     read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference,
-                                                        reference.kmer_size,
                                                         aligner_output,
                                                         min_kmer_quality=16)
     assert read_kmer_mapping.__dict__ == expected_kmer_mapping.__dict__
@@ -146,7 +145,7 @@ def test_extract_and_map_kmers_from_read_with_full_filter():
 
     # no kmer in the read will be with sufficient quality, though the read itself might be
     # due to the presence of N in the sequence
-    read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference, reference.kmer_size,aligner_output, min_kmer_quality=17)
+    read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference,aligner_output, min_kmer_quality=17)
 
     assert read_kmer_mapping.__dict__ == expected_kmer_mapping.__dict__
     # All kmers extracted from the read were filtered
@@ -166,7 +165,6 @@ def test_extract_and_map_kmers_from_read_with_full_filter():
 
     # The first kmer will be filtered out due to quality, two kmers will be filtered out due to max genomes
     read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference,
-                                                        reference.kmer_size,
                                                         aligner_output,
                                                         min_kmer_quality=16,
                                                         max_genomes=1)
@@ -179,7 +177,7 @@ def test_map_read_using_specific_kmers_one_specific_unique():
     read1 = Read("READ1", "ACACACAC", "11111111")
     reference = build_testing_reference()
     aligner_output = PseudoAlignerOutput(reference)
-    read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference, reference.kmer_size,aligner_output)
+    read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference, aligner_output)
 
     # This read should be mapped uniquely mapped to Moose
     _map_read_using_specific_kmers(read_kmer_mapping, read1, reference, 1)
@@ -192,7 +190,7 @@ def test_map_read_using_specific_kmers_unique():
     read1 = Read("READ1", "ACACAATCG", "111111111")
     reference = build_testing_reference()
     aligner_output = PseudoAlignerOutput(reference)
-    read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference, reference.kmer_size,aligner_output)
+    read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference, aligner_output)
 
     assert len(read_kmer_mapping.specific_kmers) == 3
     # This read should be mapped uniquely mapped to Moose
@@ -206,7 +204,7 @@ def test_map_read_using_specific_kmers_ambiguous():
     read1 = Read("READ1", "ATCGAAAATTTTACAC", "ATCGAAAATTTTACAC")
     reference = build_testing_reference()
     aligner_output = PseudoAlignerOutput(reference)
-    read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference, reference.kmer_size,aligner_output)
+    read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference, aligner_output)
 
     # This read should be mapped ambiguously to Duck, Moose, Turtle
     _map_read_using_specific_kmers(read_kmer_mapping, read1, reference, 1)
@@ -223,7 +221,6 @@ def test_validate_uniqueness_using_unspecific_kmers_changes_to_ambiguous():
     aligner_output = PseudoAlignerOutput(reference)
 
     read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference,
-                                                        reference.kmer_size,
                                                         aligner_output)
     # In this case - the read will be mapped uniquely to Moose due to specific kmers
     # However, once running the validation of unspecific kmers - the read will be mapped ambiguosly
@@ -244,7 +241,6 @@ def test_validate_uniqueness_using_unspecific_kmers_stays_unique():
     aligner_output = PseudoAlignerOutput(reference)
 
     read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference,
-                                                        reference.kmer_size,
                                                         aligner_output)
 
     # In this case - the read will be mapped uniquely to Moose due to specific kmers

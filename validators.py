@@ -27,7 +27,7 @@ def validate_file_type(file_path: str, file_types: List[str], message: str = "")
     if not validate_not_empty(file_path):
         raise TypeError("The parameter file_path is empty")
     if not any(file_path.endswith(file_type) for file_type in file_types):
-        message = message if message is not "" else "File {} must be of types {}".format(
+        message = message if message != "" else "File {} must be of types {}".format(
             file_path, file_types)
         raise TypeError(message)
 
@@ -46,12 +46,12 @@ def validate_above_value(param: Any, threshold: Any, allow_equality: bool,
         raise TypeError("The parameter is empty to be checked that it's above {} is None".format(threshold))
     if not allow_equality:
         if param <= threshold:
-            message = message if message is not "" else "Parameter must be greater than {}".format(
+            message = message if message != "" else "Parameter must be greater than {}".format(
                 threshold)
             raise ValueError(message)
     else:
         if param < threshold:
-            message = message if message is not "" else "Parameter must be greater than or equal to {}".format(
+            message = message if message != "" else "Parameter must be greater than or equal to {}".format(
                 threshold)
             raise ValueError(message)
 
@@ -66,6 +66,6 @@ def validate_values_in_given_list(iter: Iterable, allowed_values: List[Any], mes
     """
     valid = all(item in allowed_values for item in iter)
     if not valid:
-        message = message if message is not "" else "All items must be in {}".format(allowed_values)
+        message = message if message != "" else "All items must be in {}".format(allowed_values)
         raise ValueError(message)
 
