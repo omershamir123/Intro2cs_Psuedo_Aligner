@@ -21,7 +21,6 @@ KMER_TYPE = int
 UNIQUE_READ = 0
 AMBIGUOUS_READ = 1
 UNMAPPED_READ = 2
-READ_STATUSES = []
 READ_STATUS = int
 
 COMPLEMENTS_DICT = {"A": "T", "T": "A", "C": "G", "G": "C", "N": "N"}

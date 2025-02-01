@@ -6,9 +6,7 @@
 # WEB PAGES I USED:
 # NOTES:
 import json
-from dataclasses import dataclass
 from typing import Dict, List, Tuple, Optional
-import file_handlers
 from kmer_reference import KmerReference, extract_kmers_from_string
 from program_constants import UNMAPPED_READ, UNIQUE_READ, READ_STATUS, \
     AMBIGUOUS_READ
@@ -77,7 +75,7 @@ class PseudoAlignerOutput:
 
     def update_reads_stats(self, read_identifier: str) -> None:
         """
-        This funciton checks the status of a given read and updates the total count
+        This function checks the status of a given read and updates the total count
         of ambiguous, unique, unmapped reads accordingly
         :param read_identifier: the ID of the read to look for in the dictionary
         :return: None
@@ -157,8 +155,9 @@ def align_algorithm(fastq_file_path: str,
     aligner_output = PseudoAlignerOutput(kmer_reference)
     min_read_quality = kwargs.get("min_read_quality")
     filter_by_quality = min_read_quality is not None
+    from file_handlers import parse_fastq_file
     try:
-        for read in file_handlers.parse_fastq_file(fastq_file_path):
+        for read in parse_fastq_file(fastq_file_path):
             if read.identifier in aligner_output.reads:
                 raise ValueError("Duplicate reads detected")
             # Check whether the quality of the entire read is sufficient
@@ -200,7 +199,8 @@ def map_read(read, status: READ_STATUS,
     :return: None
     """
     read.read_status = status
-    read.add_mapped_genome(genome_identifier)
+    if genome_identifier:
+        read.add_mapped_genome(genome_identifier)
     if status == UNIQUE_READ:
         kmer_reference.genomes_db[genome_identifier].unique_reads += 1
     if status == AMBIGUOUS_READ:
@@ -319,6 +319,8 @@ def _map_read_using_specific_kmers(current_read_mapping: ReadKmerMapping,
             next(iter(current_read_mapping.specific_kmers_in_genomes))
         map_read(read, UNIQUE_READ, kmer_reference, genome_identifier)
     else:
+        # By this point - there are at least two genomes that have specific kmers from this read
+        # hence, frequent, second_frequent won't return None
         frequent, second_frequent = find_two_most_frequent_genomes(
             current_read_mapping.specific_kmers_in_genomes)
         frequency_difference = frequent[1] - second_frequent[1]
@@ -338,6 +340,7 @@ def find_two_most_frequent_genomes(specific_kmers_in_genomes: Dict[
     """
     This function receives a dictionary of genomes and the specific kmers that matched them.
     It scans through the dictionary and returns the two highest genomes with most kmers
+    Note: this function might return None if there are less than 2 items in specific_kmers_in_genomes
     :param specific_kmers_in_genomes: the dictionary of genomes and their specific kmers
     :return: Tuple of (first,second) each being a Tuple of (genome_identifier,count)
     """

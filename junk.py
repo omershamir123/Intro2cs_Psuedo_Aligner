@@ -1,3 +1,5 @@
+from typing import Optional, Tuple
+
 dict1 = {"a": 1, "b": 2}
 genome_list = [genome for genome in dict1]
 print(genome_list)
@@ -12,6 +14,22 @@ def func(**kwargs):
     print(param1, param2, param3)
 
 func(param1=1, param2=2)
+
+second: Optional[Tuple[str, int]] = None
+print(second[1])
+
+# def validate_type(param: Any, param_type: Type, message: str = None) -> None:
+#     """
+#     This function checks if the given parameter is of the given type
+#     :param param: parameter to be checked
+#     :param param_type: type of the parameter
+#     :param message: message to be printed if the parameter is not of the given type
+#     :return: None if the parameter is of the given type, Raises TypeError otherwise
+#     """
+#     if not isinstance(param, param_type):
+#         message = message if message is not None else "Parameter must be of type {}".format(
+#             param_type)
+#         raise TypeError(message)
 
 
 # with open(

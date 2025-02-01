@@ -5,10 +5,11 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
+from textwrap import indent
+
 import json
 from typing import Dict, List, Generator, Tuple
 
-import file_handlers
 from genome import ReferencedGenome
 from program_constants import WILDCARD_READINGS, UNIQUE_KMER, MULTI_MAP_KMER
 
@@ -103,8 +104,9 @@ class KmerReference:
         :param genome_file: the path to the fasta file
         :return: True if the build was successful, False otherwise
         """
+        from file_handlers import parse_fasta_file
         try:
-            for genome in file_handlers.parse_fasta_file(genome_file):
+            for genome in parse_fasta_file(genome_file):
                 if genome.identifier in self._genomes_db:
                     raise ValueError(
                         "There are two genomes in the fasta file with the header {}".format(
@@ -123,18 +125,20 @@ class KmerReference:
 
     def to_json(self) -> str:
         return json.dumps(
-            {"Kmers": self._kmer_db, "Summary": self.genome_db_to_dict()}, indent=4)
+            {"Kmers": self._kmer_db, "Summary": self.genome_db_to_dict()},
+            indent=4)
 
     def filter_reference_based_on_similarity(self,
-                                             similarity_threshold: float) -> Dict[
-        str, Tuple[str,float]]:
+                                             similarity_threshold: float) -> \
+    Dict[
+        str, Tuple[str, float]]:
         """
         This function filters out genomes from the reference that are similar to others
         If two genomes are similar, the function also makes sure the reference is updated accordingly
         :param similarity_threshold: the similarity threshold to filter out genomes
         :return: a dictionary - the keys are the removed genome identifiers and the values are the genome that they are similar to
         """
-        filtered_genomes: Dict[str, Tuple[str,float]] = {}
+        filtered_genomes: Dict[str, Tuple[str, float]] = {}
         # We initialize the genome_list separately because while iterating over the
         # genomes and filtering similar ones, we will update the unique + multi_map_kmers
         genome_list = [genome for genome in self.genomes_db]
@@ -156,13 +160,16 @@ class KmerReference:
                                          other_genome].unique_kmers_set | \
                                      self._genomes_db[
                                          other_genome].multi_mapping_kmers_set
-                similarity_score = len(
-                    current_genome_kmers & other_genome_kmers) / min(
-                    len(current_genome_kmers), len(other_genome_kmers))
-                if similarity_score > similarity_threshold:
-                    self.remove_genome_by_similarity(current_genome)
-                    filtered_genomes[current_genome] = (other_genome, similarity_score)
-                    break
+                # case to avoid edge case of genome with 0 kmers
+                if len(current_genome_kmers) != 0 and len(other_genome_kmers) != 0:
+                    similarity_score = len(
+                        current_genome_kmers & other_genome_kmers) / min(
+                        len(current_genome_kmers), len(other_genome_kmers))
+                    if similarity_score > similarity_threshold:
+                        self.remove_genome_by_similarity(current_genome)
+                        filtered_genomes[current_genome] = (
+                        other_genome, similarity_score)
+                        break
 
         return filtered_genomes
 
@@ -187,7 +194,7 @@ class KmerReference:
                     newly_unique_genome].add_kmer_to_genome_mapping(kmer,
                                                                     UNIQUE_KMER)
 
-    def similarity_json(self, filtered_genomes: Dict[str, Tuple[str,float]]):
+    def similarity_json(self, filtered_genomes: Dict[str, Tuple[str, float]]):
         similar_dict = {}
         for genome in self._genomes_db.values():
             genome_values = {"kept": "yes", "unique_kmers": genome.unique_kmers,
@@ -195,15 +202,17 @@ class KmerReference:
                              "genome_length": genome.total_bases,
                              "similar_to": "NA", "similarity_score": "NA"}
             if genome.identifier in filtered_genomes:
-                genome_values["similar_to"] = filtered_genomes[genome.identifier][0]
-                genome_values["similarity_score"] = filtered_genomes[genome.identifier][1]
+                genome_values["similar_to"] = \
+                filtered_genomes[genome.identifier][0]
+                genome_values["similarity_score"] = \
+                filtered_genomes[genome.identifier][1]
                 genome_values["kept"] = "no"
             similar_dict[genome.identifier] = genome_values
-        for genome in filtered_genomes:
-            self.genomes_db.pop(genome)
+        for filtered_genome in filtered_genomes:
+            self.genomes_db.pop(filtered_genome)
         return {"Similarity": similar_dict}
 
-    def filter_genomes_logic(self, similarity_threshold:float):
+    def filter_genomes_logic(self, similarity_threshold: float):
         filtered_genomes = self.filter_reference_based_on_similarity(
             similarity_threshold)
-        return json.dumps(self.similarity_json(filtered_genomes), indent=4)
+        return json.dumps(self.similarity_json(filtered_genomes), indent = 4)

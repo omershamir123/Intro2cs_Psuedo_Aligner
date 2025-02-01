@@ -8,7 +8,7 @@
 import gzip
 import pickle
 from pickle import UnpicklingError
-from typing import Generator, Optional, List, Union
+from typing import Generator, List, Union
 
 import program_constants
 from genome import ReferencedGenome
@@ -72,8 +72,7 @@ def parse_fastq_file(fastq_file_path: str) -> Generator[Read, None, None]:
         raise Exception(f'Unexpected error: {fastq_file_path}')
 
 
-def parse_fasta_file(fasta_file_path: str) -> Generator[
-    ReferencedGenome, None, None]:
+def parse_fasta_file(fasta_file_path: str) -> Generator[ReferencedGenome, None, None]:
     """
     This function handles the parsing of the fasta file - header line starts with >
     and all subsequent lines contain DNA samples
@@ -175,7 +174,7 @@ def decompress_pickle_file(pickle_file_path: str, supported_file_types:List[str]
         return None
     except Exception as e:
         print(
-            "An unexpected error occurred while reading the given file.".format(pickle_file_path))
+            "An unexpected error occurred while reading the given file {}.".format(pickle_file_path))
         return None
 
     try:

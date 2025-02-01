@@ -16,6 +16,7 @@ class ReadKmerMapping:
     def __init__(self):
         self._specific_kmers = []
         self._unspecific_kmers = []
+        # Key: genome_identifier, Value:List of kmers of this read in the genome
         self._specific_kmers_in_genomes: Dict[str, List[str]] = {}
         self._unspecific_kmers_in_genomes: Dict[str, List[str]] = {}
 
@@ -23,15 +24,9 @@ class ReadKmerMapping:
     def specific_kmers(self):
         return self._specific_kmers
 
-    def add_specific_kmer(self, kmer: str) -> None:
-        self._specific_kmers.append(kmer)
-
     @property
     def unspecific_kmers(self):
         return self._unspecific_kmers
-
-    def add_unspecific_kmer(self, kmer: str) -> None:
-        self._unspecific_kmers.append(kmer)
 
     @property
     def specific_kmers_in_genomes(self):
@@ -68,7 +63,7 @@ class Read:
         self._quality: List[int] = [ord(letter) - 33 for letter in quality]
 
         # Check that the quality line doesn't contain any "negative" numbers
-        map(lambda x: validate_above_value(x, 0, True), self._quality)
+        list(map(lambda x: validate_above_value(x, 0, True), self._quality))
         if len(quality) != len(value):
             raise ValueError(
                 "Read {} does not have matching read and quality lines".format(
@@ -77,8 +72,8 @@ class Read:
         self._length = len(value)
         self._read_status: READ_STATUS = UNMAPPED_READ
         self._mapped_genomes:Set[str] = set()
-        self._specific_kmers = []
-        self._unspecific_kmers = []
+        self._specific_kmers:List[str] = []
+        self._unspecific_kmers:List[str] = []
         self._reverse_complement: str = reverse_complement(value)
         self._reversed_quality: List[int] = list(reversed(self._quality))
 
@@ -113,6 +108,9 @@ class Read:
     def add_mapped_genome(self, genome: str) -> None:
         self._mapped_genomes.add(genome)
 
+    @property
+    def reversed_quality(self) -> List[int]:
+        return self._reversed_quality
 
     def calculate_mean_quality(self, starting_index:int = 0, ending_index:int = -1) -> np.floating:
         """
