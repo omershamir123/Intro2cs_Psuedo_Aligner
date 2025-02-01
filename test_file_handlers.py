@@ -130,7 +130,7 @@ def test_parse_fasta_file_invalid():
 
 def test_write_and_read_pickle_file():
     reference = KmerReference(31)
-    align_output = AlnFileDataObject(PseudoAlignerOutput(reference))
+    align_output = AlnFileDataObject(PseudoAlignerOutput(reference), False)
     aln_file_path = create_temporary_file(b"",ALN_FILE_TYPES[0])
     reference_file_path = create_temporary_file(b"",KDB_FILE_TYPES[0])
     assert file_handlers.write_to_pickle_file(aln_file_path, align_output, ALN_FILE_TYPES) == True

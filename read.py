@@ -59,7 +59,7 @@ class Read:
         validate_values_in_given_list(value, ALLOWED_DNA_VALUES)
 
         self._identifier = identifier
-        self._value = value
+        self._forward_value = value
         self._quality: List[int] = [ord(letter) - 33 for letter in quality]
 
         # Check that the quality line doesn't contain any "negative" numbers
@@ -72,10 +72,9 @@ class Read:
         self._length = len(value)
         self._read_status: READ_STATUS = UNMAPPED_READ
         self._mapped_genomes:Set[str] = set()
-        self._specific_kmers:List[str] = []
-        self._unspecific_kmers:List[str] = []
         self._reverse_complement: str = reverse_complement(value)
         self._reversed_quality: List[int] = list(reversed(self._quality))
+        self._is_reversed: bool = False
 
     @property
     def identifier(self) -> str:
@@ -83,7 +82,12 @@ class Read:
 
     @property
     def value(self) -> str:
-        return self._value
+        """
+        The value of the read that's returned is either the forward or reverse complement
+        based on the is_reversed
+        :return:
+        """
+        return self._forward_value if not self.is_reversed else self._reverse_complement
 
     @property
     def quality(self) -> List[int]:
@@ -112,6 +116,14 @@ class Read:
     def reversed_quality(self) -> List[int]:
         return self._reversed_quality
 
+    @property
+    def is_reversed(self) -> bool:
+        return self._is_reversed
+
+    @is_reversed.setter
+    def is_reversed(self, is_reversed: bool) -> None:
+        self._is_reversed = is_reversed
+
     def calculate_mean_quality(self, starting_index:int = 0, ending_index:int = -1) -> np.floating:
         """
         This function calculates the mean quality value for the read.
@@ -122,5 +134,5 @@ class Read:
         """
         if ending_index == -1:
             ending_index = self._length
-
-        return np.mean(np.array(self.quality[starting_index:ending_index]))
+        quality_to_check = self._reversed_quality if self.is_reversed else self._quality
+        return np.mean(np.array(quality_to_check[starting_index:ending_index]))

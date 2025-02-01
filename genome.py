@@ -5,7 +5,10 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
-from typing import Dict, Set
+from typing import Dict, Set, Optional
+
+import numpy as np
+from numpy import ndarray
 
 from program_constants import ALLOWED_DNA_VALUES, KMER_TYPE, UNIQUE_KMER, \
     MULTI_MAP_KMER
@@ -28,8 +31,12 @@ class ReferencedGenome:
         self._multi_mapping_kmers: int = 0
         self._unique_reads: int = 0
         self._ambiguous_reads: int = 0
+        self._unique_reads_reverse: int = 0
+        self._ambiguous_reads_reverse: int = 0
         self._unique_kmers_set: Set[str] = set()
         self._multi_mapping_kmers_set: Set[str] = set()
+        self._unique_coverage_positions: Optional[ndarray] = None
+        self._ambiguous_coverage_positions: Optional[ndarray] = None
 
     @property
     def identifier(self) -> str:
@@ -80,6 +87,22 @@ class ReferencedGenome:
         self._ambiguous_reads = value
 
     @property
+    def unique_reads_reverse(self) -> int:
+        return self._unique_reads_reverse
+
+    @unique_reads_reverse.setter
+    def unique_reads_reverse(self, value: int):
+        self._unique_reads_reverse = value
+
+    @property
+    def ambiguous_reads_reverse(self) -> int:
+        return self._ambiguous_reads_reverse
+
+    @ambiguous_reads_reverse.setter
+    def ambiguous_reads_reverse(self, value: int) -> None:
+        self._ambiguous_reads_reverse = value
+
+    @property
     def unique_kmers_set(self) -> Set[str]:
         return self._unique_kmers_set
 
@@ -87,7 +110,24 @@ class ReferencedGenome:
     def multi_mapping_kmers_set(self) -> Set[str]:
         return self._multi_mapping_kmers_set
 
-    def add_kmer_to_genome_mapping(self, kmer_value: str, kmer_type: KMER_TYPE) -> None:
+    @property
+    def unique_coverage_positions(self) -> ndarray:
+        return self._unique_coverage_positions
+
+    @unique_coverage_positions.setter
+    def unique_coverage_positions(self, value: ndarray) -> None:
+        self._unique_coverage_positions = value
+
+    @property
+    def ambiguous_coverage_positions(self) -> ndarray:
+        return self._ambiguous_coverage_positions
+
+    @ambiguous_coverage_positions.setter
+    def ambiguous_coverage_positions(self, value: ndarray) -> None:
+        self._ambiguous_coverage_positions = value
+
+    def add_kmer_to_genome_mapping(self, kmer_value: str,
+                                   kmer_type: KMER_TYPE) -> None:
         """
         This function updates the genome's kmer mapping - adds kmer_value to the KMER_TYPE mapping
         Can be either UNIQUE_KMER or MULTI_MAP_KMER
@@ -116,8 +156,37 @@ class ReferencedGenome:
                 "unique_kmers": self._unique_kmers,
                 "multi_mapping_kmers": self._multi_mapping_kmers}
 
-    def genome_mapped_to_dict(self) -> Dict[str, int]:
-        return {"unique_reads": self._unique_reads,
-                "ambiguous_reads": self._ambiguous_reads}
+    def genome_mapped_to_dict(self, is_reversed: bool = False) -> Dict[
+        str, int]:
+        if is_reversed:
+            return {"unique_reads": self._unique_reads_reverse,
+                    "ambiguous_reads": self._ambiguous_reads_reverse}
+        else:
+            return {"unique_reads": self._unique_reads,
+                    "ambiguous_reads": self._ambiguous_reads}
 
+    def initialize_coverage_arrays(self) -> None:
+        self._unique_coverage_positions = np.zeros(self._total_bases, dtype=int)
+        self._ambiguous_coverage_positions = np.zeros(self._total_bases,
+                                                      dtype=int)
 
+    def genome_coverage_stats(self, min_coverage: int) -> dict:
+        if self._unique_coverage_positions != None and self._ambiguous_coverage_positions != None:
+            covered_bases_unique = (
+                    self._unique_coverage_positions >= min_coverage).sum(
+                dtype=int)
+            covered_bases_ambiguous = (
+                    self._ambiguous_coverage_positions >= min_coverage).sum(
+                dtype=int)
+            mean_coverage_unique = round(self._unique_coverage_positions.mean(),
+                                         1)
+            mean_coverage_ambiguous = round(
+                self._ambiguous_coverage_positions.mean(), 1)
+            return {"covered_bases_unique": covered_bases_unique,
+                    "covered_bases_ambiguous": covered_bases_ambiguous,
+                    "mean_coverage_unique": mean_coverage_unique,
+                    "mean_coverage_ambiguous": mean_coverage_ambiguous}
+
+    def genome_full_coverage_stats(self) -> dict:
+        return {"unique_cov": self._unique_coverage_positions,
+                "ambiguous_cov": self._ambiguous_coverage_positions}

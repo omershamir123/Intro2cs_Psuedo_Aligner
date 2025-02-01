@@ -121,8 +121,16 @@ def align_command(args: Namespace) -> None:
                                                       args.unique_threshold,
                                                       args.ambiguous_threhold, **vars(args))
         if align_output is not None:
-            aln_file_object = align_output.convert_to_aln_object()
-            file_handlers.write_to_pickle_file(args.alignfile, aln_file_object,
+            align_file_object = align_output.convert_to_aln_object(args.reverse_complment)
+            if args.coverage:
+                try:
+                    validators.validate_above_value(args.min_coverage, 0, True)
+                except ValueError:
+                    print("Invalid min coverage provided")
+                    return
+                print(align_file_object.to_coverage_json(args.full_coverage,
+                                                         args.min_coverage))
+            file_handlers.write_to_pickle_file(args.alignfile, align_file_object,
                                                ALN_FILE_TYPES)
 
 
@@ -147,8 +155,15 @@ def dumpalign_command(args: Namespace) -> None:
             align_output = pseudo_aligner.align_algorithm(args.reads, reference,
                                                           args.unique_threshold,
                                                           args.ambiguous_threhold, **vars(args))
-            align_file_object = align_output.convert_to_aln_object()
+            align_file_object = align_output.convert_to_aln_object(args.reverse_complement)
     if align_file_object is not None:
+        if args.coverage:
+            try:
+                validators.validate_above_value(args.min_coverage, 0, True)
+            except ValueError:
+                print("Invalid min coverage provided")
+                return
+            print(align_file_object.to_coverage_json(args.full_coverage, args.min_coverage))
         print(align_file_object.to_json())
 
 

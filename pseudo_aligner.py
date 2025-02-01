@@ -5,6 +5,8 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
+import numpy as np
+
 import json
 from typing import Dict, List, Tuple, Optional
 from kmer_reference import KmerReference, extract_kmers_from_string
@@ -15,15 +17,16 @@ from read import Read, ReadKmerMapping
 
 class PseudoAlignerOutput:
 
-    def __init__(self, kmer_reference: KmerReference):
+    def __init__(self, kmer_reference: KmerReference, coverage_included:bool, genome_list_str:Optional[str]):
         self._reads: Dict[str, Read] = {}
-        self._kmer_reference = kmer_reference
+        self._kmer_reference:KmerReference = kmer_reference
         self._unique_mapped_reads = 0
         self._ambiguous_mapped_reads = 0
         self._unmapped_reads = 0
         self._filtered_quality_reads = 0
         self._filtered_quality_kmers = 0
         self._filtered_hr_kmers = 0
+        self._genome_list:List[str] = extract_genomes_list(genome_list_str, kmer_reference) if coverage_included else None
 
     @property
     def reads(self) -> Dict[str, Read]:
@@ -69,6 +72,10 @@ class PseudoAlignerOutput:
     def filtered_hr_kmers(self, value: int):
         self._filtered_hr_kmers = value
 
+    @property
+    def genome_list(self) -> List[str]:
+        return self._genome_list
+
     def add_read(self, read: Read) -> None:
         if not read.identifier in self._reads:
             self._reads[read.identifier] = read
@@ -89,13 +96,12 @@ class PseudoAlignerOutput:
             elif status == UNIQUE_READ:
                 self._unique_mapped_reads += 1
 
-    def convert_to_aln_object(self)->"AlnFileDataObject":
-        return AlnFileDataObject(self)
-
+    def convert_to_aln_object(self, is_reversed: bool) -> "AlnFileDataObject":
+        return AlnFileDataObject(self, is_reversed=is_reversed)
 
 
 class AlnFileDataObject:
-    def __init__(self, aligner_output: PseudoAlignerOutput):
+    def __init__(self, aligner_output: PseudoAlignerOutput, is_reversed: bool):
         self.genomes_db = aligner_output.kmer_reference.genomes_db
         self._unique_mapped_reads = aligner_output.unique_mapped_reads
         self._ambiguous_mapped_reads = aligner_output.ambiguous_mapped_reads
@@ -103,15 +109,24 @@ class AlnFileDataObject:
         self._filtered_quality_reads = aligner_output.filtered_quality_reads
         self._filtered_quality_kmers = aligner_output.filtered_quality_kmers
         self._filtered_hr_kmers = aligner_output.filtered_hr_kmers
+        self._reverse_complement_included = is_reversed
+        self._genome_list = aligner_output.genome_list
 
     def genomes_mapped_to_dict(self) -> Dict[str, Dict[str, int]]:
-        return {k: v.genome_mapped_to_dict() for k, v in
+        if not self._reverse_complement_included:
+            return {k: v.genome_mapped_to_dict() for k, v in
+                    self.genomes_db.items()}
+        else:
+            return {k + "_F": v.genome_mapped_to_dict(is_reversed=False) for
+                    k, v in
+                    self.genomes_db.items()} | {
+                k + "_R": v.genome_mapped_to_dict(is_reversed=True) for k, v in
                 self.genomes_db.items()}
 
     def read_stats_to_dict(self, **kwargs) -> Dict[str, int]:
         summary = {"unique_mapped_reads": self._unique_mapped_reads,
-                "ambiguous_mapped_reads": self._ambiguous_mapped_reads,
-                "unmapped_reads": self._unmapped_reads}
+                   "ambiguous_mapped_reads": self._ambiguous_mapped_reads,
+                   "unmapped_reads": self._unmapped_reads}
         if kwargs.get("min_read_quality") is not None:
             summary["filtered_quality_reads"] = self._filtered_quality_reads
         if kwargs.get("min_quality_kmer") is not None:
@@ -121,7 +136,23 @@ class AlnFileDataObject:
         return summary
 
     def to_json(self):
-        return json.dumps({"Statistics":self.read_stats_to_dict(), "Summary":self.genomes_mapped_to_dict()}, indent=4)
+        return json.dumps({"Statistics": self.read_stats_to_dict(),
+                           "Summary": self.genomes_mapped_to_dict()}, indent=4)
+
+    def coverage_statistics_summary(self, min_coverage:int):
+        return {genome: self.genomes_db[genome].genome_coverage_stats(min_coverage) for genome in
+                self._genome_list}
+
+    def full_coverage_stats(self):
+        return {genome: self.genomes_db[genome].genome_full_coverage_stats() for genome in
+                self._genome_list}
+
+    def to_coverage_json(self, apply_full_coverage:bool, min_coverage:int):
+        if not apply_full_coverage:
+            return json.dumps({"Coverage": self.coverage_statistics_summary(min_coverage)})
+        else:
+            return json.dumps({"Coverage": self.coverage_statistics_summary(min_coverage), "Details": self.full_coverage_stats()})
+
 
 
 def should_filter_read(read: Read, min_read_quality: int) -> bool:
@@ -136,9 +167,122 @@ def should_filter_read(read: Read, min_read_quality: int) -> bool:
     return False
 
 
+def determine_best_mapping_for_read(read: Read,
+                                    aligner_output: PseudoAlignerOutput,
+                                    kmer_reference: KmerReference,
+                                    **kwargs) -> ReadKmerMapping:
+    """
+    This function calculates the KmerMapping object of the current read.
+    If the reverse_complement flag is inserted - it determines the better orientaion as well
+    It does so by calculating the amount of specific kmers in each orientation
+    If the reverse_complement flag isn't inserted, it returns the default forward orientation read kmer mapping
+
+    :param read: the current read
+    :param aligner_output: the aligner_output object
+    :param kmer_reference: the kmer_reference object
+    :param kwargs: more optional arguments given by the user - one being reverse_complement
+    :return: the kmer mapping of this read, if needed, the reverse orientation mapping
+    """
+    filtered_quality_kmers_before_read_check = aligner_output.filtered_quality_kmers
+    filtered_hr_kmers_before_read_check = aligner_output.filtered_hr_kmers
+    check_reverse_complement = kwargs.get("reverse_complement")
+    forward_read_mapping = extract_and_map_kmers_from_read(
+        read,
+        kmer_reference,
+        aligner_output, **kwargs)
+    filtered_hr_kmers_after_forward_check = aligner_output.filtered_hr_kmers
+    filtered_quality_kmers_after_forward_check = aligner_output.filtered_quality_kmers
+    current_read_mapping = forward_read_mapping
+    if check_reverse_complement:
+        read.is_reversed = True
+        reversed_read_mapping = extract_and_map_kmers_from_read(
+            read,
+            kmer_reference,
+            aligner_output, **kwargs)
+        # In this case, and this case only - prefer the reverse mapping
+        if len(reversed_read_mapping.specific_kmers) > len(
+                forward_read_mapping.specific_kmers):
+            current_read_mapping = reversed_read_mapping
+            hr_kmers_diff = aligner_output.filtered_hr_kmers - filtered_hr_kmers_after_forward_check
+            aligner_output.filtered_hr_kmers = filtered_hr_kmers_before_read_check + hr_kmers_diff
+
+            quality_kmers_diff = aligner_output.filtered_quality_kmers - filtered_quality_kmers_after_forward_check
+            aligner_output.filtered_quality_kmers = filtered_quality_kmers_before_read_check + quality_kmers_diff
+
+        else:
+            read.is_reversed = False
+            aligner_output.filtered_hr_kmers = filtered_hr_kmers_after_forward_check
+            aligner_output.filtered_quality_kmers = filtered_quality_kmers_after_forward_check
+
+    return current_read_mapping
+
+
+def initialize_genome_coverage(genome_list: List[str],
+                               kmer_reference: KmerReference ) -> bool:
+    """
+    This function is called once the coverage extension is activated, and it initializes the coverage
+    array for each genome in the genome_list
+    :param genome_list: the list of genomes to apply the coverage
+    :param kmer_reference: the kmer reference which contains the genomes db
+    :return: True if the initialization is successful, False otherwise (a genome in the genome list isn't in the db)
+    """
+    for genome_identifier in genome_list:
+        if genome_identifier not in kmer_reference.genomes_db:
+            print(
+                "There was an error in the coverage genomes list. The genome {} isn't in the reference".format(
+                    genome_identifier))
+            return False
+        kmer_reference.genomes_db[
+            genome_identifier].initialize_coverage_arrays()
+    return True
+
+
+def update_genome_coverage(read: Read, current_read_mapping: ReadKmerMapping,
+                           kmer_reference: KmerReference,
+                           genome_list: List[str]) -> None:
+    """
+    This function is called once the coverage extension is activated, and it updates the genome coverage
+    for all genomes in the genome_list for the current read.
+    It goes over all the mapped genomes of the read - If they are in genome_list - then if does the following:
+    Goes over all the specific kmers + unspecific_kmers in the ReadMap - if they are present in the genome
+    It does so by looking for the genome in the kmer_reference.kmer_db
+    :param genome_list: the list of genomes for the coverage
+    :param read: the current read
+    :param current_read_mapping: the mapping of the current read
+    :param kmer_reference: the kmer reference which contains the kmer_db
+    :return: None
+    """
+
+    for genome_identifier in read.mapped_genomes:
+        if genome_identifier in genome_list:
+            covered_bases = np.zeros(kmer_reference.genomes_db[genome_identifier].total_bases, dtype=int)
+            kmers_in_genome_present_in_read = \
+            current_read_mapping.specific_kmers_in_genomes[genome_identifier].extend(
+            current_read_mapping.unspecific_kmers_in_genomes.get(genome_identifier, []))
+
+            for kmer in kmers_in_genome_present_in_read:
+                for starting_position in kmer_reference.kmer_db[kmer][genome_identifier]:
+                    covered_bases[starting_position:starting_position + kmer_reference.kmer_size] = 1
+
+            if read.read_status == UNIQUE_READ:
+                kmer_reference.genomes_db[genome_identifier].unique_coverage_positions += covered_bases
+
+            if read.read_status == AMBIGUOUS_READ:
+                kmer_reference.genomes_db[genome_identifier].unique_coverage_positions += covered_bases
+
+
+def extract_genomes_list(genome_list_str: Optional[str], kmer_reference:KmerReference)-> List[str]:
+    if genome_list_str is None:
+        genome_list = list(kmer_reference.genomes_db.keys())
+    else:
+        genome_list = str.split(genome_list_str, ",")
+    return genome_list
+
 def align_algorithm(fastq_file_path: str,
-                    kmer_reference: KmerReference, current_unique_threshold: int,
-                    ambiguous_threshold: int, **kwargs) -> Optional[PseudoAlignerOutput]:
+                    kmer_reference: KmerReference,
+                    current_unique_threshold: int,
+                    ambiguous_threshold: int, **kwargs) -> Optional[
+    PseudoAlignerOutput]:
     """
     This function runs the pseudo_align algorithm as given in the instructions.
     For each read in the fastq_file:
@@ -151,10 +295,16 @@ def align_algorithm(fastq_file_path: str,
     :param ambiguous_threshold: threshold to distinguish two ambiguously mapped genomes
     :return: None
     """
-    kmer_size = kmer_reference.kmer_size
-    aligner_output = PseudoAlignerOutput(kmer_reference)
+    check_coverage = kwargs.get("coverage")
+    genome_list_str = kwargs.get("genome_list")
+    aligner_output = PseudoAlignerOutput(kmer_reference, check_coverage, genome_list_str)
     min_read_quality = kwargs.get("min_read_quality")
     filter_by_quality = min_read_quality is not None
+    check_coverage = kwargs.get("coverage")
+    genome_list = aligner_output.genome_list
+    if check_coverage:
+        if not initialize_genome_coverage(genome_list, kmer_reference):
+            return None
     from file_handlers import parse_fastq_file
     try:
         for read in parse_fastq_file(fastq_file_path):
@@ -165,10 +315,12 @@ def align_algorithm(fastq_file_path: str,
                 aligner_output.filtered_quality_reads += 1
                 continue
             aligner_output.add_read(read)
-            current_read_mapping = extract_and_map_kmers_from_read(
-                read,
-                kmer_reference,
-                aligner_output, **kwargs)
+
+            current_read_mapping = determine_best_mapping_for_read(read,
+                                                                   aligner_output,
+                                                                   kmer_reference,
+                                                                   **kwargs)
+
             if len(current_read_mapping.specific_kmers) == 0:
                 map_read(read, UNMAPPED_READ)
             else:
@@ -180,9 +332,13 @@ def align_algorithm(fastq_file_path: str,
                         current_read_mapping, read, kmer_reference,
                         ambiguous_threshold)
             aligner_output.update_reads_stats(read.identifier)
+            if check_coverage:
+                update_genome_coverage(read, current_read_mapping,
+                                       kmer_reference, genome_list)
     except Exception as e:
         print(e)
         return None
+
     return aligner_output
 
 
@@ -202,14 +358,23 @@ def map_read(read, status: READ_STATUS,
     if genome_identifier:
         read.add_mapped_genome(genome_identifier)
     if status == UNIQUE_READ:
-        kmer_reference.genomes_db[genome_identifier].unique_reads += 1
+        if read.is_reversed:
+            kmer_reference.genomes_db[
+                genome_identifier].unique_reads_reverse += 1
+        else:
+            kmer_reference.genomes_db[genome_identifier].unique_reads += 1
     if status == AMBIGUOUS_READ:
-        kmer_reference.genomes_db[genome_identifier].ambiguous_reads += 1
+        if read.is_reversed:
+            kmer_reference.genomes_db[
+                genome_identifier].ambiguous_reads_reverse += 1
+        else:
+            kmer_reference.genomes_db[genome_identifier].ambiguous_reads += 1
 
 
 def extract_and_map_kmers_from_read(read: Read,
                                     kmer_reference: KmerReference,
-                                    aligner_output:PseudoAlignerOutput, **kwargs) -> ReadKmerMapping:
+                                    aligner_output: PseudoAlignerOutput,
+                                    **kwargs) -> ReadKmerMapping:
     """
     This function extracts the kmers from the read and maps each kmer as specific, unspecific or neither
     It does that based on each kmer's appearance in the kmer_reference
@@ -227,7 +392,8 @@ def extract_and_map_kmers_from_read(read: Read,
         kmer, kmer_position = kmer_tuple
         # Check if the quality of the kmer from the read is sufficient
         if min_kmer_quality is not None:
-            mean_quality_of_kmer = read.calculate_mean_quality(kmer_position, kmer_position + kmer_size)
+            mean_quality_of_kmer = read.calculate_mean_quality(kmer_position,
+                                                               kmer_position + kmer_size)
             if mean_quality_of_kmer < min_kmer_quality:
                 aligner_output.filtered_quality_kmers += 1
                 continue
@@ -382,6 +548,13 @@ def validate_uniqueness_using_unspecific(current_read_mapping: ReadKmerMapping,
     unique_genome_identifier = next(iter(read.mapped_genomes))
     map_count = total_counter_dict[unique_genome_identifier]
     if max_count - map_count > ambiguous_threshold:
+        # This read is no longer uniquely mapped to the genome
+        if read.is_reversed:
+            kmer_reference.genomes_db[
+                unique_genome_identifier].unique_reads_reverse -= 1
+        else:
+            kmer_reference.genomes_db[
+                unique_genome_identifier].unique_reads -= 1
         # ambiguously map all genomes
         for genome_identifier, total_count in total_counter_dict.items():
             if total_count >= map_count:

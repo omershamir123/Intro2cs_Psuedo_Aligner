@@ -33,6 +33,13 @@ print(second[1])
 
 
 # with open(
+#         "C:\\Users\\omers\\Documents\\CS\Year1\Semester1\Intro2CS\Intro2cs_Psuedo_Aligner\json\\small_example_se_k150_n10k_dump.json",
+#         "r") as eg_file:
+#     example_json = json.load(eg_file)
+#     reference_json = json.loads(align_file_object.to_json())
+#     print(example_json == reference_json)
+
+# with open(
 #         "C:\\Users\\omers\\Documents\\CS\Year1\Semester1\Intro2CS\Intro2cs_Psuedo_Aligner\json\\ref_mid_clean_k31_dump.json",
 #         "r") as eg_file:
 #     example_json = json.load(eg_file)
