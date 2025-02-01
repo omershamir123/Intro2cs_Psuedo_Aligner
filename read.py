@@ -5,7 +5,7 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
-from typing import List, Dict, Set
+from typing import List, Set
 
 import numpy as np
 from program_constants import *
@@ -17,8 +17,9 @@ class ReadKmerMapping:
         self._specific_kmers = []
         self._unspecific_kmers = []
         # Key: genome_identifier, Value:List of kmers of this read in the genome
-        self._specific_kmers_in_genomes: Dict[str, List[str]] = {}
-        self._unspecific_kmers_in_genomes: Dict[str, List[str]] = {}
+        # Dict[str, List[str]]
+        self._specific_kmers_in_genomes = {}
+        self._unspecific_kmers_in_genomes = {}
 
     @property
     def specific_kmers(self):
@@ -124,7 +125,7 @@ class Read:
     def is_reversed(self, is_reversed: bool) -> None:
         self._is_reversed = is_reversed
 
-    def calculate_mean_quality(self, starting_index:int = 0, ending_index:int = -1) -> np.floating:
+    def calculate_mean_quality(self, starting_index:int = 0, ending_index:int = -1) -> float:
         """
         This function calculates the mean quality value for the read.
         Note: Assumes starting,ending >=0 + starting<=ending
@@ -135,4 +136,4 @@ class Read:
         if ending_index == -1:
             ending_index = self._length
         quality_to_check = self._reversed_quality if self.is_reversed else self._quality
-        return np.mean(np.array(quality_to_check[starting_index:ending_index]))
+        return float(np.mean(np.array(quality_to_check[starting_index:ending_index])))

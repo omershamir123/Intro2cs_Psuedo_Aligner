@@ -6,7 +6,6 @@
 # WEB PAGES I USED:
 # NOTES:
 import pytest
-import numpy as np
 
 import read
 from read import reverse_complement

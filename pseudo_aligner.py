@@ -17,16 +17,19 @@ from read import Read, ReadKmerMapping
 
 class PseudoAlignerOutput:
 
-    def __init__(self, kmer_reference: KmerReference, coverage_included:bool, genome_list_str:Optional[str]):
+    def __init__(self, kmer_reference: KmerReference,
+                 coverage_included: bool = False,
+                 genome_list_str: Optional[str] = None):
         self._reads: Dict[str, Read] = {}
-        self._kmer_reference:KmerReference = kmer_reference
+        self._kmer_reference: KmerReference = kmer_reference
         self._unique_mapped_reads = 0
         self._ambiguous_mapped_reads = 0
         self._unmapped_reads = 0
         self._filtered_quality_reads = 0
         self._filtered_quality_kmers = 0
         self._filtered_hr_kmers = 0
-        self._genome_list:List[str] = extract_genomes_list(genome_list_str, kmer_reference) if coverage_included else None
+        self._genome_list: List[str] = extract_genomes_list(genome_list_str,
+                                                            kmer_reference) if coverage_included else []
 
     @property
     def reads(self) -> Dict[str, Read]:
@@ -139,20 +142,26 @@ class AlnFileDataObject:
         return json.dumps({"Statistics": self.read_stats_to_dict(),
                            "Summary": self.genomes_mapped_to_dict()}, indent=4)
 
-    def coverage_statistics_summary(self, min_coverage:int):
-        return {genome: self.genomes_db[genome].genome_coverage_stats(min_coverage) for genome in
-                self._genome_list}
+    def coverage_statistics_summary(self, min_coverage: int):
+        return {
+            genome: self.genomes_db[genome].genome_coverage_stats(min_coverage)
+            for genome in
+            self._genome_list}
 
     def full_coverage_stats(self):
-        return {genome: self.genomes_db[genome].genome_full_coverage_stats() for genome in
+        return {genome: self.genomes_db[genome].genome_full_coverage_stats() for
+                genome in
                 self._genome_list}
 
-    def to_coverage_json(self, apply_full_coverage:bool, min_coverage:int):
+    def to_coverage_json(self, apply_full_coverage: bool, min_coverage: int):
         if not apply_full_coverage:
-            return json.dumps({"Coverage": self.coverage_statistics_summary(min_coverage)})
+            return json.dumps(
+                {"Coverage": self.coverage_statistics_summary(min_coverage)},
+                indent=4)
         else:
-            return json.dumps({"Coverage": self.coverage_statistics_summary(min_coverage), "Details": self.full_coverage_stats()})
-
+            return json.dumps(
+                {"Coverage": self.coverage_statistics_summary(min_coverage),
+                 "Details": self.full_coverage_stats()})
 
 
 def should_filter_read(read: Read, min_read_quality: int) -> bool:
@@ -218,7 +227,7 @@ def determine_best_mapping_for_read(read: Read,
 
 
 def initialize_genome_coverage(genome_list: List[str],
-                               kmer_reference: KmerReference ) -> bool:
+                               kmer_reference: KmerReference) -> bool:
     """
     This function is called once the coverage extension is activated, and it initializes the coverage
     array for each genome in the genome_list
@@ -255,28 +264,38 @@ def update_genome_coverage(read: Read, current_read_mapping: ReadKmerMapping,
 
     for genome_identifier in read.mapped_genomes:
         if genome_identifier in genome_list:
-            covered_bases = np.zeros(kmer_reference.genomes_db[genome_identifier].total_bases, dtype=int)
+            covered_bases = np.zeros(
+                kmer_reference.genomes_db[genome_identifier].total_bases,
+                dtype=int)
             kmers_in_genome_present_in_read = \
-            current_read_mapping.specific_kmers_in_genomes[genome_identifier].extend(
-            current_read_mapping.unspecific_kmers_in_genomes.get(genome_identifier, []))
+                current_read_mapping.specific_kmers_in_genomes[
+                    genome_identifier] + \
+                current_read_mapping.unspecific_kmers_in_genomes.get(
+                    genome_identifier, [])
 
             for kmer in kmers_in_genome_present_in_read:
-                for starting_position in kmer_reference.kmer_db[kmer][genome_identifier]:
-                    covered_bases[starting_position:starting_position + kmer_reference.kmer_size] = 1
+                for starting_position in kmer_reference.kmer_db[kmer][
+                    genome_identifier]:
+                    covered_bases[
+                    starting_position:starting_position + kmer_reference.kmer_size] = 1
 
             if read.read_status == UNIQUE_READ:
-                kmer_reference.genomes_db[genome_identifier].unique_coverage_positions += covered_bases
+                kmer_reference.genomes_db[
+                    genome_identifier].unique_coverage_positions += covered_bases
 
             if read.read_status == AMBIGUOUS_READ:
-                kmer_reference.genomes_db[genome_identifier].unique_coverage_positions += covered_bases
+                kmer_reference.genomes_db[
+                    genome_identifier].unique_coverage_positions += covered_bases
 
 
-def extract_genomes_list(genome_list_str: Optional[str], kmer_reference:KmerReference)-> List[str]:
+def extract_genomes_list(genome_list_str: Optional[str],
+                         kmer_reference: KmerReference) -> List[str]:
     if genome_list_str is None:
         genome_list = list(kmer_reference.genomes_db.keys())
     else:
         genome_list = str.split(genome_list_str, ",")
     return genome_list
+
 
 def align_algorithm(fastq_file_path: str,
                     kmer_reference: KmerReference,
@@ -295,9 +314,13 @@ def align_algorithm(fastq_file_path: str,
     :param ambiguous_threshold: threshold to distinguish two ambiguously mapped genomes
     :return: None
     """
+    # mypy might be unhappy but in the argsparser, the value is store_true
     check_coverage = kwargs.get("coverage")
     genome_list_str = kwargs.get("genome_list")
-    aligner_output = PseudoAlignerOutput(kmer_reference, check_coverage, genome_list_str)
+    # mypy might be unhappy but there is an action in the argsparse - store_true
+    aligner_output = PseudoAlignerOutput(kmer_reference, check_coverage,
+                                         genome_list_str)
+    # mypy might be unhappy but in the argsparser, there is a default value
     min_read_quality = kwargs.get("min_read_quality")
     filter_by_quality = min_read_quality is not None
     check_coverage = kwargs.get("coverage")
@@ -322,7 +345,7 @@ def align_algorithm(fastq_file_path: str,
                                                                    **kwargs)
 
             if len(current_read_mapping.specific_kmers) == 0:
-                map_read(read, UNMAPPED_READ)
+                map_read(read, UNMAPPED_READ, kmer_reference)
             else:
                 _map_read_using_specific_kmers(current_read_mapping,
                                                read, kmer_reference,
@@ -343,8 +366,8 @@ def align_algorithm(fastq_file_path: str,
 
 
 def map_read(read, status: READ_STATUS,
-             kmer_reference: KmerReference = None,
-             genome_identifier: str = None) -> None:
+             kmer_reference: KmerReference,
+             genome_identifier: str = "") -> None:
     """
     This function receives a read and sets its status as well as the effect of
     that status on all relevant genomes
@@ -516,7 +539,7 @@ def find_two_most_frequent_genomes(specific_kmers_in_genomes: Dict[
                 genome_identifier, len(specific_kmer_list)), first
         elif second is None or len(specific_kmer_list) >= second[1]:
             second = (genome_identifier, len(specific_kmer_list))
-
+    # mypy might be unhappy - but this function will only be called in the case when first,second won't be None
     return first, second
 
 

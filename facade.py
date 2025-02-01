@@ -5,7 +5,6 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
-import json
 from argparse import Namespace
 from typing import Dict, Callable, Optional
 
@@ -14,9 +13,7 @@ import pseudo_aligner
 import validators
 from kmer_reference import KmerReference
 from program_constants import KDB_FILE_TYPES, ALN_FILE_TYPES
-
-from validators import validate_not_empty
-
+from pseudo_aligner import AlnFileDataObject
 
 def build_reference(kmer_size: int, genomefile: str) -> Optional[KmerReference]:
     """
@@ -45,8 +42,7 @@ def reference_command(args: Namespace) -> None:
     :param args: the arguments given by the user
     :return: None
     """
-    if not validate_not_empty(args.genomefile) or not validate_not_empty(
-            args.kmer_size) or not validate_not_empty(args.reference_file):
+    if not args.genomefile or not args.kmer_size or not args.referencefile:
         print(
             "For the reference command - a genome file, a reference file and a kmer-size must be provided")
         return
@@ -70,23 +66,26 @@ def extract_reference(args: Namespace) -> Optional[KmerReference]:
     :param args: the arguments given by the user
     :return: if the parameters are valid - a kmer-reference object else None
     """
-    if validate_not_empty(args.genomefile) and validate_not_empty(
-            args.kmer_size):
-        if validate_not_empty(args.referencefile):
+    if args.genomefile and args.kmer_size:
+        if args.referencefile:
             print(
                 "Both a genome file and a reference file were provided - invalid input for the {} command".format(
                     args.task))
             return None
         reference = build_reference(args.kmer_size, args.genomefile)
     else:
-        if not validate_not_empty(args.referencefile):
+        if not args.referencefile:
             print(
                 "No reference file given - invalid input for the {} command".format(
                     args.task))
             return None
+        # mypy might be unhappy about this but there is an extra check later on that
+        # reference is indeed a KmerReference object
         reference = file_handlers.decompress_pickle_file(args.referencefile,
                                                          KDB_FILE_TYPES)
-    return reference
+    if isinstance(reference, KmerReference):
+        return reference
+    return None
 
 
 def dumpref_command(args: Namespace) -> None:
@@ -110,18 +109,22 @@ def align_command(args: Namespace) -> None:
     :param args: arguments given by the user
     :return: None
     """
-    if not validate_not_empty(args.alignfile) or not validate_not_empty(
-            args.reads):
+    if not args.alignfile or not args.reads:
         print(
             "For the alignment command - an align file path and a reads file must be provided")
         return
     reference = extract_reference(args)
     if reference is not None:
+        try:
+            validators.validate_above_value(args.unique_threshold, 0, True)
+        except ValueError:
+            print("Invalid unique threshold value provided")
+            return
         align_output = pseudo_aligner.align_algorithm(args.reads, reference,
                                                       args.unique_threshold,
                                                       args.ambiguous_threhold, **vars(args))
         if align_output is not None:
-            align_file_object = align_output.convert_to_aln_object(args.reverse_complment)
+            align_file_object = align_output.convert_to_aln_object(args.reverse_complement)
             if args.coverage:
                 try:
                     validators.validate_above_value(args.min_coverage, 0, True)
@@ -136,8 +139,8 @@ def align_command(args: Namespace) -> None:
 
 def dumpalign_command(args: Namespace) -> None:
     align_file_object = None
-    if validate_not_empty(args.alignfile):
-        if any(validate_not_empty(argument) for argument in
+    if args.alignfile:
+        if any(argument is not None for argument in
                [args.reads, args.referencefile, args.genomefile,
                 args.kmer_size]):
             print(
@@ -146,23 +149,32 @@ def dumpalign_command(args: Namespace) -> None:
         align_file_object = file_handlers.decompress_pickle_file(args.alignfile,
                                                                  ALN_FILE_TYPES)
     else:
-        if not validate_not_empty(args.reads):
+        if not args.reads:
             print(
                 "No reads file given - invalid input for the dumpalign command")
             return
         reference = extract_reference(args)
         if reference is not None:
+            try:
+                validators.validate_above_value(args.unique_threshold, 0, True)
+            except ValueError:
+                print("Invalid unique threshold value provided")
+                return
             align_output = pseudo_aligner.align_algorithm(args.reads, reference,
                                                           args.unique_threshold,
                                                           args.ambiguous_threhold, **vars(args))
-            align_file_object = align_output.convert_to_aln_object(args.reverse_complement)
-    if align_file_object is not None:
+            if align_output is not None:
+                align_file_object = align_output.convert_to_aln_object(args.reverse_complement)
+            else:
+                align_file_object = None
+    if align_file_object is not None and isinstance(align_file_object, AlnFileDataObject):
         if args.coverage:
             try:
                 validators.validate_above_value(args.min_coverage, 0, True)
             except ValueError:
                 print("Invalid min coverage provided")
                 return
+
             print(align_file_object.to_coverage_json(args.full_coverage, args.min_coverage))
         print(align_file_object.to_json())
 

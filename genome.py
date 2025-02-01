@@ -5,7 +5,7 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
-from typing import Dict, Set, Optional
+from typing import Dict, Set
 
 import numpy as np
 from numpy import ndarray
@@ -35,8 +35,8 @@ class ReferencedGenome:
         self._ambiguous_reads_reverse: int = 0
         self._unique_kmers_set: Set[str] = set()
         self._multi_mapping_kmers_set: Set[str] = set()
-        self._unique_coverage_positions: Optional[ndarray] = None
-        self._ambiguous_coverage_positions: Optional[ndarray] = None
+        self._unique_coverage_positions: ndarray = np.zeros(1)
+        self._ambiguous_coverage_positions: ndarray = np.zeros(1)
 
     @property
     def identifier(self) -> str:
@@ -57,14 +57,13 @@ class ReferencedGenome:
     @property
     def unique_kmers(self) -> int:
         return self._unique_kmers
+    @unique_kmers.setter
+    def unique_kmers(self, value: int) -> None:
+        self._unique_kmers = value
 
     @property
     def multi_mapping_kmers(self) -> int:
         return self._multi_mapping_kmers
-
-    @unique_kmers.setter
-    def unique_kmers(self, value: int) -> None:
-        self._unique_kmers = value
 
     @multi_mapping_kmers.setter
     def multi_mapping_kmers(self, value: int) -> None:
@@ -171,22 +170,20 @@ class ReferencedGenome:
                                                       dtype=int)
 
     def genome_coverage_stats(self, min_coverage: int) -> dict:
-        if self._unique_coverage_positions != None and self._ambiguous_coverage_positions != None:
-            covered_bases_unique = (
-                    self._unique_coverage_positions >= min_coverage).sum(
-                dtype=int)
-            covered_bases_ambiguous = (
-                    self._ambiguous_coverage_positions >= min_coverage).sum(
-                dtype=int)
-            mean_coverage_unique = round(self._unique_coverage_positions.mean(),
-                                         1)
-            mean_coverage_ambiguous = round(
-                self._ambiguous_coverage_positions.mean(), 1)
-            return {"covered_bases_unique": covered_bases_unique,
-                    "covered_bases_ambiguous": covered_bases_ambiguous,
-                    "mean_coverage_unique": mean_coverage_unique,
-                    "mean_coverage_ambiguous": mean_coverage_ambiguous}
+        covered_bases_unique = int(
+            (self._unique_coverage_positions >= min_coverage).sum())
+        covered_bases_ambiguous = int(
+            (self._ambiguous_coverage_positions >= min_coverage).sum())
+        mean_coverage_unique = round(self._unique_coverage_positions.mean(),
+                                     1)
+        mean_coverage_ambiguous = round(
+            self._ambiguous_coverage_positions.mean(), 1)
+        return {"covered_bases_unique": covered_bases_unique,
+                "covered_bases_ambiguous": covered_bases_ambiguous,
+                "mean_coverage_unique": mean_coverage_unique,
+                "mean_coverage_ambiguous": mean_coverage_ambiguous}
+
 
     def genome_full_coverage_stats(self) -> dict:
-        return {"unique_cov": self._unique_coverage_positions,
-                "ambiguous_cov": self._ambiguous_coverage_positions}
+        return {"unique_cov": self._unique_coverage_positions.tolist(),
+                "ambiguous_cov": self._ambiguous_coverage_positions.tolist()}

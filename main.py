@@ -3,8 +3,6 @@
 import argparse
 
 import facade
-from test_pseudo_aligner import test_align_algorithm_reverse
-
 
 def readargs(args=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -82,8 +80,7 @@ def readargs(args=None) -> argparse.Namespace:
 
 def main() -> None:
     args=readargs()
-    #facade.start_program(args)
-    test_align_algorithm_reverse()
+    facade.start_program(args)
 
 if __name__=="__main__":
     main()

@@ -5,7 +5,7 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
-from typing import Any, Type, Iterable, List
+from typing import Any, Iterable, List
 
 
 def validate_not_empty(param: Any) -> bool:

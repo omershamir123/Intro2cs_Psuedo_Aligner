@@ -5,11 +5,9 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
-from pickle import FALSE
 
 import pytest
 
-import validators
 from genome import ReferencedGenome
 from program_constants import KDB_FILE_TYPES, FASTQ_FILE_TYPES
 from validators import validate_not_empty, validate_file_type, \

@@ -5,7 +5,6 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
-from textwrap import indent
 
 import json
 from typing import Dict, List, Generator, Tuple

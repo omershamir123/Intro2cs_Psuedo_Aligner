@@ -13,8 +13,8 @@ from program_constants import UNMAPPED_READ, UNIQUE_READ, AMBIGUOUS_READ, \
     FASTQ_FILE_TYPES
 from pseudo_aligner import PseudoAlignerOutput, should_filter_read, map_read, \
     extract_and_map_kmers_from_read, _map_read_using_specific_kmers, \
-    validate_uniqueness_using_unspecific, align_algorithm
-from read import Read, ReadKmerMapping, reverse_complement
+    validate_uniqueness_using_unspecific, align_algorithm, extract_genomes_list
+from read import Read, ReadKmerMapping
 from test_file_handlers import create_temporary_file
 from test_kmer_reference import build_testing_reference
 
@@ -285,11 +285,13 @@ def test_align_algorithm():
     aln_object = aligner_output.convert_to_aln_object(False)
     assert json.dumps(expected_align_output, indent=4) == aln_object.to_json()
 
+
 def test_align_algorithm_reverse():
     fastq_file_path = create_temporary_file(FASTQ_FILE_REVERSE_SINGLE_READ,
                                             FASTQ_FILE_TYPES[0])
     reference = build_testing_reference()
-    aligner_output = align_algorithm(fastq_file_path, reference, 1, 1, reverse_complement=True)
+    aligner_output = align_algorithm(fastq_file_path, reference, 1, 1,
+                                     reverse_complement=True)
     os.remove(fastq_file_path)
 
     expected_reads_stats = {"unique_mapped_reads": 0,
@@ -307,6 +309,50 @@ def test_align_algorithm_reverse():
         "Otter_R": {"unique_reads": 0, "ambiguous_reads": 0},
         "Turtle_R": {"unique_reads": 0, "ambiguous_reads": 1},
         "Moose_R": {"unique_reads": 0, "ambiguous_reads": 1},
+        "Virus_R": {"unique_reads": 0, "ambiguous_reads": 0}
+    }
+
+    expected_align_output = {"Statistics": expected_reads_stats,
+                             "Summary": expected_mapped_genome_stats}
+
+    aln_object = aligner_output.convert_to_aln_object(True)
+    assert json.dumps(expected_align_output, indent=4) == aln_object.to_json()
+
+
+def test_extract_genomes_list():
+    reference = build_testing_reference()
+    expected_genome_list = ["Mouse", "Duck", "Otter", "Turtle", "Moose",
+                            "Virus"]
+    genomes_list = extract_genomes_list(None, reference)
+    assert genomes_list == expected_genome_list
+
+    expected_genome_list = ["Mouse", "Otter"]
+    genomes_list = extract_genomes_list("Mouse,Otter", reference)
+
+
+def test_align_algorithm_read_filtered_due_to_quality():
+    fastq_file_path = create_temporary_file(FASTQ_FILE_SINGLE_READ,
+                                            FASTQ_FILE_TYPES[0])
+    reference = build_testing_reference()
+    aligner_output = align_algorithm(fastq_file_path, reference, 1, 1,
+                                     min_read_quality=17)
+    os.remove(fastq_file_path)
+
+    expected_reads_stats = {"unique_mapped_reads": 0,
+                            "ambiguous_mapped_reads": 0,
+                            "unmapped_reads": 0}
+    expected_mapped_genome_stats = {
+        "Mouse_F": {"unique_reads": 0, "ambiguous_reads": 0},
+        "Duck_F": {"unique_reads": 0, "ambiguous_reads": 0},
+        "Otter_F": {"unique_reads": 0, "ambiguous_reads": 0},
+        "Turtle_F": {"unique_reads": 0, "ambiguous_reads": 0},
+        "Moose_F": {"unique_reads": 0, "ambiguous_reads": 0},
+        "Virus_F": {"unique_reads": 0, "ambiguous_reads": 0},
+        "Mouse_R": {"unique_reads": 0, "ambiguous_reads": 0},
+        "Duck_R": {"unique_reads": 0, "ambiguous_reads": 0},
+        "Otter_R": {"unique_reads": 0, "ambiguous_reads": 0},
+        "Turtle_R": {"unique_reads": 0, "ambiguous_reads": 0},
+        "Moose_R": {"unique_reads": 0, "ambiguous_reads": 0},
         "Virus_R": {"unique_reads": 0, "ambiguous_reads": 0}
     }
 
