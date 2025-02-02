@@ -126,11 +126,6 @@ def align_command(args: Namespace) -> None:
         if align_output is not None:
             align_file_object = align_output.convert_to_aln_object(args.reverse_complement)
             if args.coverage:
-                try:
-                    validators.validate_above_value(args.min_coverage, 0, True)
-                except ValueError:
-                    print("Invalid min coverage provided")
-                    return
                 print(align_file_object.to_coverage_json(args.full_coverage,
                                                          args.min_coverage))
             file_handlers.write_to_pickle_file(args.alignfile, align_file_object,
@@ -169,12 +164,6 @@ def dumpalign_command(args: Namespace) -> None:
                 align_file_object = None
     if align_file_object is not None and isinstance(align_file_object, AlnFileDataObject):
         if args.coverage:
-            try:
-                validators.validate_above_value(args.min_coverage, 0, True)
-            except ValueError:
-                print("Invalid min coverage provided")
-                return
-
             print(align_file_object.to_coverage_json(args.full_coverage, args.min_coverage))
         print(align_file_object.to_json(**vars(args)))
 
