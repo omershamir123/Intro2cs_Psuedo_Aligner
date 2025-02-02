@@ -68,29 +68,12 @@ class KmerReference:
         """
         for kmer in extract_kmers_from_string(genome.sequence, self._kmer_size):
             current_kmer, current_position = kmer
+            genome.add_kmer_to_genome_mapping(current_kmer)
             if current_kmer not in self._kmer_db:
                 self._kmer_db[current_kmer] = {}
             if genome.identifier not in self._kmer_db[current_kmer]:
-                # check if it's the first genome added - if so, it's unique
-                if len(self._kmer_db[current_kmer].keys()) == 0:
-                    genome.add_kmer_to_genome_mapping(current_kmer, UNIQUE_KMER)
-                # if there is another genome already associated with this kmer,
-                # update it to be multi_mapped
-                elif len(self._kmer_db[current_kmer].keys()) == 1:
-                    other_genome_identifier = next(
-                        iter(self._kmer_db[current_kmer]))
-                    self._genomes_db[
-                        other_genome_identifier].add_kmer_to_genome_mapping(
-                        current_kmer, MULTI_MAP_KMER)
-                # if there is more than one genome associated with this kmer
-                # add the multi mapping kmer to this genome
-                if len(self._kmer_db[current_kmer].keys()) >= 1:
-                    genome.add_kmer_to_genome_mapping(current_kmer,
-                                                      MULTI_MAP_KMER)
-
                 self._kmer_db[current_kmer][genome.identifier] = [
                     current_position]
-
             else:
                 self._kmer_db[current_kmer][genome.identifier].append(
                     current_position)
@@ -116,16 +99,25 @@ class KmerReference:
         except Exception as e:
             print(e)
             return False
-
         return True
+
+    def calculate_kmers_type(self) -> None:
+        for genome in self._genomes_db.values():
+            genome.unique_kmers = 0
+            genome.multi_mapping_kmers = 0
+            for kmer in genome.kmers_set:
+                if len(self._kmer_db[kmer]) == 1:
+                    genome.unique_kmers += len(self._kmer_db[kmer][genome.identifier])
+                else:
+                    genome.multi_mapping_kmers += len(self._kmer_db[kmer][genome.identifier])
+
 
     def genome_db_to_dict(self) -> Dict[str, Dict[str, int]]:
         return {k: v.genome_ref_to_dict() for k, v in self.genomes_db.items()}
 
     def to_json(self) -> str:
         return json.dumps(
-            {"Kmers": self._kmer_db, "Summary": self.genome_db_to_dict()},
-            indent=4)
+            {"Kmers": self._kmer_db, "Summary": self.genome_db_to_dict()})
 
     def filter_reference_based_on_similarity(self,
                                              similarity_threshold: float) -> \
@@ -150,15 +142,11 @@ class KmerReference:
         for i in range(len(genome_list)):
             current_genome = genome_list[i]
             current_genome_kmers = self._genomes_db[
-                                       current_genome].unique_kmers_set | \
-                                   self._genomes_db[
-                                       current_genome].multi_mapping_kmers_set
+                                       current_genome].kmers_set
             for j in range(i + 1, len(genome_list)):
                 other_genome = genome_list[j]
                 other_genome_kmers = self._genomes_db[
-                                         other_genome].unique_kmers_set | \
-                                     self._genomes_db[
-                                         other_genome].multi_mapping_kmers_set
+                                         other_genome].kmers_set
                 # case to avoid edge case of genome with 0 kmers
                 if len(current_genome_kmers) != 0 and len(other_genome_kmers) != 0:
                     similarity_score = len(
@@ -181,17 +169,11 @@ class KmerReference:
         """
         removed_genome = self._genomes_db[removed_genome_id]
 
-        for kmer in removed_genome.unique_kmers_set:
-            self._kmer_db.pop(kmer)
-        for kmer in removed_genome.multi_mapping_kmers_set:
-            self._kmer_db[kmer].pop(removed_genome_id)
-            # Check if after removing the genome - there is only one genome(c) left mapped to the kmer
-            # If so, it is now a unique kmer mapped to the genome(c)
-            if len(self._kmer_db[kmer].keys()) == 1:
-                newly_unique_genome = next(iter(self._kmer_db[kmer]))
-                self._genomes_db[
-                    newly_unique_genome].add_kmer_to_genome_mapping(kmer,
-                                                                    UNIQUE_KMER)
+        for kmer in removed_genome.kmers_set:
+            if len(self._kmer_db[kmer]) == 1:
+                self._kmer_db.pop(kmer)
+            else:
+                self._kmer_db[kmer].pop(removed_genome_id)
 
     def similarity_json(self, filtered_genomes: Dict[str, Tuple[str, float]]):
         similar_dict = {}
@@ -214,4 +196,4 @@ class KmerReference:
     def filter_genomes_logic(self, similarity_threshold: float):
         filtered_genomes = self.filter_reference_based_on_similarity(
             similarity_threshold)
-        return json.dumps(self.similarity_json(filtered_genomes), indent = 4)
+        return json.dumps(self.similarity_json(filtered_genomes))

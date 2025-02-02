@@ -390,9 +390,63 @@ def test_4_3_coverage_dumplalign(monkeypatch, capsys):
     args = main.readargs(sys.argv[1:])
 
     dumpalign_command(args)
-    assert json.loads(str.split(capsys.readouterr().out, '{\n    "Statistics')[
+    assert json.loads(str.split(capsys.readouterr().out, '\n')[
                           0].strip()) == json.loads(
         json.dumps(COVERAGE_OUTPUT_FOR_READS))
+
+
+def test_4_3_coverage_dumpalign_specific_genome(monkeypatch, capsys):
+    k = 3
+    ref_content = b">Mouse\nAAACTCAAACCC\n>Cat\nAACCTTTTTTT"
+
+    reads_content = (
+        b"@READ1\nAAAAAAAAAAA\n+\n!!!!!!!!!!!\n@READ2\nCCCAAA\n+\n??????\n@Read3\n"
+        b"ACCT\n+\n?!?!")
+    reads_path = create_temporary_file(reads_content, FASTQ_FILE_TYPES[0])
+    genome_path = create_temporary_file(ref_content, FASTA_FILE_TYPES[0])
+
+    monkeypatch.setattr(sys, 'argv',
+                        ["main.py", "-t", "dumpref", '-g', genome_path, '-k',
+                         "3",
+                         '--coverage', '--genomes',
+                         "Mouse", "--reads",
+                         reads_path, "--full-coverage"])
+    args = main.readargs()
+    dumpalign_command(args)
+
+    outputs = str.split(capsys.readouterr().out.strip(), '\n', 1)
+
+    summary_output = json.loads(outputs[1])
+    coverage_output = json.loads(outputs[0])
+    expected_coverage = {
+        "Coverage": {
+            "Mouse": {
+                "covered_bases_unique": 10,
+                "covered_bases_ambiguous": 0,
+                "mean_coverage_unique": 1.3,
+                "mean_coverage_ambiguous": 0.0
+            }
+        },
+        "Details": {
+            "Mouse": {
+                "unique_cov": [2, 2, 2, 0, 0, 1, 2, 2, 2, 1, 1, 1],
+                "ambiguous_cov": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            }
+        }
+    }
+    expected_summary = {
+        "Statistics": {
+            "unique_mapped_reads": 3, "ambiguous_mapped_reads": 0,
+            "unmapped_reads": 0},
+        "Summary":
+            {"Mouse":
+                 {"unique_reads": 2, "ambiguous_reads": 0},
+             "Cat":
+                 {"unique_reads": 1, "ambiguous_reads": 0}}}
+    assert coverage_output == expected_coverage
+    assert expected_summary == summary_output
+    os.remove(genome_path)
+    os.remove(reads_path)
 
 
 def test_function_calls(monkeypatch):
@@ -413,6 +467,7 @@ def test_function_calls(monkeypatch):
     os.remove(kdb_file)
 
     assert reference.kmer_db == reference_from_kdb_file.kmer_db
+
 
 def test_function_calls_invalid_task(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv",

@@ -5,7 +5,6 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
-from textwrap import indent
 
 import numpy as np
 
@@ -142,7 +141,7 @@ class AlnFileDataObject:
 
     def to_json(self, **kwargs):
         return json.dumps({"Statistics": self.read_stats_to_dict(**kwargs),
-                           "Summary": self.genomes_mapped_to_dict()}, indent=4)
+                           "Summary": self.genomes_mapped_to_dict()})
 
     def coverage_statistics_summary(self, min_coverage: int):
         return {
@@ -158,8 +157,7 @@ class AlnFileDataObject:
     def to_coverage_json(self, apply_full_coverage: bool, min_coverage: int):
         if not apply_full_coverage:
             return json.dumps(
-                {"Coverage": self.coverage_statistics_summary(min_coverage)},
-                indent=4)
+                {"Coverage": self.coverage_statistics_summary(min_coverage)})
         else:
             return json.dumps(
                 {"Coverage": self.coverage_statistics_summary(min_coverage),
@@ -318,7 +316,7 @@ def align_algorithm(fastq_file_path: str,
     """
     # mypy might be unhappy but in the argsparser, the value is store_true
     check_coverage = kwargs.get("coverage")
-    genome_list_str = kwargs.get("genome_list")
+    genome_list_str = kwargs.get("genomes")
     # mypy might be unhappy but there is an action in the argsparse - store_true
     aligner_output = PseudoAlignerOutput(kmer_reference, check_coverage,
                                          genome_list_str)

@@ -283,7 +283,7 @@ def test_align_algorithm():
                              "Summary": expected_mapped_genome_stats}
 
     aln_object = aligner_output.convert_to_aln_object(False)
-    assert json.dumps(expected_align_output, indent=4) == aln_object.to_json()
+    assert json.dumps(expected_align_output) == aln_object.to_json()
 
 
 def test_align_algorithm_reverse():
@@ -316,7 +316,7 @@ def test_align_algorithm_reverse():
                              "Summary": expected_mapped_genome_stats}
 
     aln_object = aligner_output.convert_to_aln_object(True)
-    assert json.dumps(expected_align_output, indent=4) == aln_object.to_json()
+    assert json.dumps(expected_align_output) == aln_object.to_json()
 
 
 def test_extract_genomes_list():
@@ -360,4 +360,5 @@ def test_align_algorithm_read_filtered_due_to_quality():
                              "Summary": expected_mapped_genome_stats}
 
     aln_object = aligner_output.convert_to_aln_object(True)
-    assert json.dumps(expected_align_output, indent=4) == aln_object.to_json()
+    assert json.dumps(expected_align_output) == aln_object.to_json()
+

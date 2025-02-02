@@ -21,27 +21,20 @@ def test_init():
 def test_kmer_add_to_genome():
     genome1 = ReferencedGenome("genome1", "ATCNG", 2)
 
-    genome1.add_kmer_to_genome_mapping("KMER1", UNIQUE_KMER)
-    assert genome1.unique_kmers == 1 and genome1.unique_kmers_set == {"KMER1"}
+    genome1.add_kmer_to_genome_mapping("KMER1")
+    assert genome1.kmers_set == {"KMER1"}
 
-    genome1.add_kmer_to_genome_mapping("KMER2", UNIQUE_KMER)
-    genome1.add_kmer_to_genome_mapping("KMER1", MULTI_MAP_KMER)
-    assert genome1.unique_kmers == 1 and genome1.unique_kmers_set == {"KMER2"}
-    assert genome1.multi_mapping_kmers == 1 and genome1.multi_mapping_kmers_set == {"KMER1"}
-
-    genome1.add_kmer_to_genome_mapping("KMER2", MULTI_MAP_KMER)
-    genome1.add_kmer_to_genome_mapping("KMER2", UNIQUE_KMER)
-    assert genome1.unique_kmers == 1 and genome1.unique_kmers_set == {"KMER2"}
-    assert genome1.multi_mapping_kmers == 1 and genome1.multi_mapping_kmers_set == {"KMER1"}
+    genome1.add_kmer_to_genome_mapping("KMER2")
+    genome1.add_kmer_to_genome_mapping("KMER1")
+    assert "KMER1" in genome1.kmers_set and "KMER2" in genome1.kmers_set and len(genome1.kmers_set) == 2
 
 
 def test_genome_to_dict_format():
     genome1 = ReferencedGenome("genome1", "ATCNG", 2)
-    genome1.add_kmer_to_genome_mapping("KMER1", UNIQUE_KMER)
-    genome1.add_kmer_to_genome_mapping("KMER2", MULTI_MAP_KMER)
     genome1.unique_reads += 1
     genome1.ambiguous_reads += 10
-
+    genome1.unique_kmers += 1
+    genome1.multi_mapping_kmers += 1
     assert genome1.genome_ref_to_dict() == {"total_bases": 5,
                 "unique_kmers": 1,
                 "multi_mapping_kmers": 1}

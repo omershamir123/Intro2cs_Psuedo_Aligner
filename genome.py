@@ -35,6 +35,7 @@ class ReferencedGenome:
         self._ambiguous_reads_reverse: int = 0
         self._unique_kmers_set: Set[str] = set()
         self._multi_mapping_kmers_set: Set[str] = set()
+        self._kmers_set: Set[str] = set()
         self._unique_coverage_positions: ndarray = np.zeros(1)
         self._ambiguous_coverage_positions: ndarray = np.zeros(1)
 
@@ -102,6 +103,10 @@ class ReferencedGenome:
         self._ambiguous_reads_reverse = value
 
     @property
+    def kmers_set(self) -> Set[str]:
+        return self._kmers_set
+
+    @property
     def unique_kmers_set(self) -> Set[str]:
         return self._unique_kmers_set
 
@@ -125,30 +130,14 @@ class ReferencedGenome:
     def ambiguous_coverage_positions(self, value: ndarray) -> None:
         self._ambiguous_coverage_positions = value
 
-    def add_kmer_to_genome_mapping(self, kmer_value: str,
-                                   kmer_type: KMER_TYPE) -> None:
+    def add_kmer_to_genome_mapping(self, kmer_value: str) -> None:
         """
         This function updates the genome's kmer mapping - adds kmer_value to the KMER_TYPE mapping
         Can be either UNIQUE_KMER or MULTI_MAP_KMER
         :param kmer_value: the kmer_value
-        :param kmer_type: the kmer_type
         :return: None
         """
-        if kmer_type == UNIQUE_KMER:
-            if kmer_value in self.multi_mapping_kmers_set:
-                self.multi_mapping_kmers_set.remove(kmer_value)
-                self.multi_mapping_kmers -= 1
-            if kmer_value not in self.unique_kmers_set:
-                self.unique_kmers_set.add(kmer_value)
-                self.unique_kmers += 1
-
-        if kmer_type == MULTI_MAP_KMER:
-            if kmer_value in self.unique_kmers_set:
-                self.unique_kmers_set.remove(kmer_value)
-                self.unique_kmers -= 1
-            if kmer_value not in self.multi_mapping_kmers_set:
-                self.multi_mapping_kmers_set.add(kmer_value)
-                self.multi_mapping_kmers += 1
+        self.kmers_set.add(kmer_value)
 
     def genome_ref_to_dict(self) -> Dict[str, int]:
         return {"total_bases": self._total_bases,

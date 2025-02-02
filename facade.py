@@ -32,6 +32,7 @@ def build_reference(kmer_size: int, genomefile: str) -> Optional[KmerReference]:
     build_successful = reference.build_kmer_reference(genomefile)
     # If build was not successful for various reasons, the function will not continue on
     if build_successful:
+        reference.calculate_kmers_type()
         return reference
     return None
 
@@ -54,6 +55,7 @@ def reference_command(args: Namespace) -> None:
         # and update the reference file accordingly
         if args.filter_similar:
             print(reference.filter_genomes_logic(args.similarity_threshold))
+            reference.calculate_kmers_type()
         file_handlers.write_to_pickle_file(args.referencefile, reference,
                                            KDB_FILE_TYPES)
 
@@ -98,6 +100,7 @@ def dumpref_command(args: Namespace) -> None:
     if reference is not None:
         if args.filter_similar:
             print(reference.filter_genomes_logic(args.similarity_threshold))
+            reference.calculate_kmers_type()
         print(reference.to_json())
 
 

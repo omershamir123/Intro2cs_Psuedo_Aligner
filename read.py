@@ -86,7 +86,7 @@ class Read:
         """
         The value of the read that's returned is either the forward or reverse complement
         based on the is_reversed
-        :return:
+        :return: the value of the read based on its status
         """
         return self._forward_value if not self.is_reversed else self._reverse_complement
 

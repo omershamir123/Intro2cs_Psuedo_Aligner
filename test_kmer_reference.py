@@ -37,11 +37,11 @@ FULL_FASTA_EXPECTED_KMER_DB = {
     "CACA": {"Moose": [2, 4, 6, 8]}
     }
 FULL_FASTA_EXPECTED_GENOME_DICT = {
-    "Mouse": {"total_bases": 8, "unique_kmers": 0, "multi_mapping_kmers": 1},
+    "Mouse": {"total_bases": 8, "unique_kmers": 0, "multi_mapping_kmers": 5},
     "Duck": {"total_bases": 4, "unique_kmers": 1, "multi_mapping_kmers": 0},
-    "Otter": {"total_bases": 21, "unique_kmers": 0, "multi_mapping_kmers": 1},
-    "Turtle": {"total_bases": 12, "unique_kmers": 3, "multi_mapping_kmers": 2},
-    "Moose": {"total_bases": 13, "unique_kmers": 2, "multi_mapping_kmers": 0},
+    "Otter": {"total_bases": 21, "unique_kmers": 0, "multi_mapping_kmers": 5},
+    "Turtle": {"total_bases": 12, "unique_kmers": 3, "multi_mapping_kmers": 6},
+    "Moose": {"total_bases": 13, "unique_kmers": 9, "multi_mapping_kmers": 0},
     "Virus": {"total_bases": 3, "unique_kmers": 0, "multi_mapping_kmers": 0}}
 
 FULL_FASTA_EXPECTED_OUTPUT = {"Kmers": FULL_FASTA_EXPECTED_KMER_DB,
@@ -50,7 +50,7 @@ FULL_FASTA_EXPECTED_OUTPUT = {"Kmers": FULL_FASTA_EXPECTED_KMER_DB,
 SIMILARITY_OUTPUT = {"Similarity":
                          {"Mouse":
                               {"kept": "no", "unique_kmers": 0,
-                               "total_kmers": 1,
+                               "total_kmers": 5,
                                "genome_length": 8, "similar_to": "Turtle",
                                "similarity_score": 1.0},
                           "Duck": {"kept": "yes", "unique_kmers": 1,
@@ -58,15 +58,15 @@ SIMILARITY_OUTPUT = {"Similarity":
                                    "genome_length": 4, "similar_to": "NA",
                                    "similarity_score": "NA"},
                           "Otter": {"kept": "no", "unique_kmers": 0,
-                                    "total_kmers": 1,
+                                    "total_kmers": 5,
                                     "genome_length": 21, "similar_to": "Turtle",
                                     "similarity_score": 1.0},
-                          "Turtle": {"kept": "yes", "unique_kmers": 5,
-                                     "total_kmers": 5,
+                          "Turtle": {"kept": "yes", "unique_kmers": 3,
+                                     "total_kmers": 9,
                                      "genome_length": 12, "similar_to": "NA",
                                      "similarity_score": "NA"},
-                          "Moose": {"kept": "yes", "unique_kmers": 2,
-                                    "total_kmers": 2,
+                          "Moose": {"kept": "yes", "unique_kmers": 9,
+                                    "total_kmers": 9,
                                     "genome_length": 13, "similar_to": "NA",
                                     "similarity_score": "NA"},
                           "Virus": {"kept": "yes", "unique_kmers": 0,
@@ -86,6 +86,7 @@ def build_testing_reference()->KmerReference:
                                               FASTA_FILE_TYPES[0])
     reference = KmerReference(KMER_SIZE)
     build_successful = reference.build_kmer_reference(genome_fasta_file)
+    reference.calculate_kmers_type()
     os.remove(genome_fasta_file)
 
     assert build_successful
@@ -134,19 +135,19 @@ def test_build_reference_valid():
     reference = build_testing_reference()
 
     assert reference.kmer_db == FULL_FASTA_EXPECTED_KMER_DB
-    assert reference.genomes_db["Moose"].unique_kmers == 2
+    assert reference.genomes_db["Moose"].unique_kmers == 9
     assert reference.genomes_db["Moose"].total_bases == 13
     assert reference.genomes_db["Turtle"].unique_kmers == 3
-    assert reference.genomes_db["Turtle"].multi_mapping_kmers == 2
+    assert reference.genomes_db["Turtle"].multi_mapping_kmers == 6
     assert reference.genomes_db["Mouse"].unique_kmers == 0 and \
-           reference.genomes_db["Mouse"].multi_mapping_kmers_set == {"AAAA"}
+           reference.genomes_db["Mouse"].kmers_set == {"AAAA"}
     assert reference.genomes_db["Virus"].unique_kmers == 0
     assert reference.genomes_db["Virus"].multi_mapping_kmers == 0
     assert reference.genomes_db["Virus"].total_bases == 3
 
     # Checking the final json output of the reference_file
     reference_output = reference.to_json()
-    assert reference_output == json.dumps(FULL_FASTA_EXPECTED_OUTPUT, indent=4)
+    assert reference_output == json.dumps(FULL_FASTA_EXPECTED_OUTPUT)
 
 
 def test_build_reference_invalid():
@@ -156,6 +157,7 @@ def test_build_reference_invalid():
                                               FASTA_FILE_TYPES[0])
     reference = KmerReference(kmer_size)
     build_successful = reference.build_kmer_reference(genome_fasta_file)
+    reference.calculate_kmers_type()
     os.remove(genome_fasta_file)
 
     assert build_successful == False
@@ -164,6 +166,5 @@ def test_build_reference_invalid():
 def test_filter_similar():
     reference = build_testing_reference()
 
-    assert reference.filter_genomes_logic(0.95) == json.dumps(SIMILARITY_OUTPUT,
-                                                              indent=4)
+    assert reference.filter_genomes_logic(0.95) == json.dumps(SIMILARITY_OUTPUT)
     assert len(reference.genomes_db) == 4
