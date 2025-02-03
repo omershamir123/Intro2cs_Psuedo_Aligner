@@ -54,7 +54,7 @@ def reference_command(args: Namespace) -> None:
         # Now, if filer-similar flag is True we check the similarity score between each genome
         # and update the reference file accordingly
         if args.filter_similar:
-            print(reference.filter_genomes_logic(args.similarity_threshold))
+            reference.filter_genomes_logic(args.similarity_threshold)
             reference.calculate_kmers_type()
         file_handlers.write_to_pickle_file(args.referencefile, reference,
                                            KDB_FILE_TYPES)
@@ -75,6 +75,9 @@ def extract_reference(args: Namespace) -> Optional[KmerReference]:
                     args.task))
             return None
         reference = build_reference(args.kmer_size, args.genomefile)
+        if reference is not None and args.filter_similar and args.task == "dumpref":
+            reference.filter_genomes_logic(args.similarity_threshold)
+            reference.calculate_kmers_type()
     else:
         if not args.referencefile:
             print(
@@ -98,11 +101,9 @@ def dumpref_command(args: Namespace) -> None:
     """
     reference = extract_reference(args)
     if reference is not None:
-        if args.filter_similar:
-            print(reference.filter_genomes_logic(args.similarity_threshold))
-            reference.calculate_kmers_type()
         print(reference.to_json())
-
+        if reference.check_reference_was_filtered():
+            print(reference.print_similarity_results())
 
 def align_command(args: Namespace) -> None:
     """
@@ -129,8 +130,8 @@ def align_command(args: Namespace) -> None:
         if align_output is not None:
             align_file_object = align_output.convert_to_aln_object(args.reverse_complement)
             if args.coverage:
-                print(align_file_object.to_coverage_json(args.full_coverage,
-                                                         args.min_coverage))
+                align_file_object.coverage_logic(args.full_coverage,
+                                                         args.min_coverage)
             file_handlers.write_to_pickle_file(args.alignfile, align_file_object,
                                                ALN_FILE_TYPES)
 
@@ -149,7 +150,7 @@ def dumpalign_command(args: Namespace) -> None:
     else:
         if not args.reads:
             print(
-                "No reads file given - invalid input for the dumpalign command")
+                "No reads and no aln file given - invalid input for the dumpalign command")
             return
         reference = extract_reference(args)
         if reference is not None:
@@ -163,12 +164,15 @@ def dumpalign_command(args: Namespace) -> None:
                                                           args.ambiguous_threhold, **vars(args))
             if align_output is not None:
                 align_file_object = align_output.convert_to_aln_object(args.reverse_complement)
+                if args.coverage:
+                    align_file_object.coverage_logic(args.full_coverage,
+                                                     args.min_coverage)
             else:
                 align_file_object = None
     if align_file_object is not None and isinstance(align_file_object, AlnFileDataObject):
-        if args.coverage:
-            print(align_file_object.to_coverage_json(args.full_coverage, args.min_coverage))
-        print(align_file_object.to_json(**vars(args)))
+        print(align_file_object.to_json())
+        if align_file_object.check_coverage_was_applied():
+            print(align_file_object.print_coverage_results())
 
 
 def initialize_function_calls() -> Dict[str, Callable[[Namespace], None]]:

@@ -82,6 +82,11 @@ DUPLICATE_GENOMES_FASTA_FILE = (b">Mouse\n"
 KMER_SIZE = 4
 
 def build_testing_reference()->KmerReference:
+    """
+    This function is used to build the testing KmerReference used in most tetss
+    Its structure is seen above
+    :return:
+    """
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     reference = KmerReference(KMER_SIZE)
@@ -95,6 +100,11 @@ def build_testing_reference()->KmerReference:
 
 
 def test_extract_kmers():
+    """
+    This function checks the kmer extraction functionality.
+    It checks sequences with one kmer, no kmers, with and without wildcards
+    :return:
+    """
     sequence_without_wildcard = "ATCGATCGATCG"
 
     kmer_size = 8
@@ -132,6 +142,10 @@ def test_extract_kmers():
 
 
 def test_build_reference_valid():
+    """
+    This function makes sure the reference building step is as expected
+    :return:
+    """
     reference = build_testing_reference()
 
     assert reference.kmer_db == FULL_FASTA_EXPECTED_KMER_DB
@@ -151,6 +165,11 @@ def test_build_reference_valid():
 
 
 def test_build_reference_invalid():
+    """
+    This function checks that the reference building step is stopped since
+    there are two genomes of the same name
+    :return:
+    """
     # Duplicate_genomes
     kmer_size = 4
     genome_fasta_file = create_temporary_file(DUPLICATE_GENOMES_FASTA_FILE,
@@ -164,7 +183,12 @@ def test_build_reference_invalid():
 
 
 def test_filter_similar():
+    """
+    This function checks the functionality of the filter similar extension
+    With the given fasta file it shows which genomes were filtered out due to similarity
+    :return:
+    """
     reference = build_testing_reference()
-
-    assert reference.filter_genomes_logic(0.95) == json.dumps(SIMILARITY_OUTPUT)
+    reference.filter_genomes_logic(0.95)
+    assert reference.print_similarity_results() == json.dumps(SIMILARITY_OUTPUT)
     assert len(reference.genomes_db) == 4

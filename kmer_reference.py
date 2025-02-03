@@ -44,6 +44,7 @@ class KmerReference:
         self._kmer_db: Dict[str, Dict[str, List[int]]] = {}
         self._genomes_db: Dict[str, ReferencedGenome] = {}
         self._kmer_size = kmer_size
+        self._similarity_results: dict = {}
 
     @property
     def kmer_db(self) -> Dict[str, Dict[str, List[int]]]:
@@ -56,6 +57,9 @@ class KmerReference:
     @property
     def kmer_size(self) -> int:
         return self._kmer_size
+
+    def check_reference_was_filtered(self)->bool:
+        return self._similarity_results != {}
 
     def add_kmers_to_db(self, genome: ReferencedGenome) -> None:
         """
@@ -107,10 +111,11 @@ class KmerReference:
             genome.multi_mapping_kmers = 0
             for kmer in genome.kmers_set:
                 if len(self._kmer_db[kmer]) == 1:
-                    genome.unique_kmers += len(self._kmer_db[kmer][genome.identifier])
+                    genome.unique_kmers += len(
+                        self._kmer_db[kmer][genome.identifier])
                 else:
-                    genome.multi_mapping_kmers += len(self._kmer_db[kmer][genome.identifier])
-
+                    genome.multi_mapping_kmers += len(
+                        self._kmer_db[kmer][genome.identifier])
 
     def genome_db_to_dict(self) -> Dict[str, Dict[str, int]]:
         return {k: v.genome_ref_to_dict() for k, v in self.genomes_db.items()}
@@ -121,8 +126,8 @@ class KmerReference:
 
     def filter_reference_based_on_similarity(self,
                                              similarity_threshold: float) -> \
-    Dict[
-        str, Tuple[str, float]]:
+            Dict[
+                str, Tuple[str, float]]:
         """
         This function filters out genomes from the reference that are similar to others
         If two genomes are similar, the function also makes sure the reference is updated accordingly
@@ -142,20 +147,21 @@ class KmerReference:
         for i in range(len(genome_list)):
             current_genome = genome_list[i]
             current_genome_kmers = self._genomes_db[
-                                       current_genome].kmers_set
+                current_genome].kmers_set
             for j in range(i + 1, len(genome_list)):
                 other_genome = genome_list[j]
                 other_genome_kmers = self._genomes_db[
-                                         other_genome].kmers_set
+                    other_genome].kmers_set
                 # case to avoid edge case of genome with 0 kmers
-                if len(current_genome_kmers) != 0 and len(other_genome_kmers) != 0:
+                if len(current_genome_kmers) != 0 and len(
+                        other_genome_kmers) != 0:
                     similarity_score = len(
                         current_genome_kmers & other_genome_kmers) / min(
                         len(current_genome_kmers), len(other_genome_kmers))
                     if similarity_score > similarity_threshold:
                         self.remove_genome_by_similarity(current_genome)
                         filtered_genomes[current_genome] = (
-                        other_genome, similarity_score)
+                            other_genome, similarity_score)
                         break
 
         return filtered_genomes
@@ -184,16 +190,19 @@ class KmerReference:
                              "similar_to": "NA", "similarity_score": "NA"}
             if genome.identifier in filtered_genomes:
                 genome_values["similar_to"] = \
-                filtered_genomes[genome.identifier][0]
+                    filtered_genomes[genome.identifier][0]
                 genome_values["similarity_score"] = \
-                filtered_genomes[genome.identifier][1]
+                    filtered_genomes[genome.identifier][1]
                 genome_values["kept"] = "no"
             similar_dict[genome.identifier] = genome_values
         for filtered_genome in filtered_genomes:
             self.genomes_db.pop(filtered_genome)
         return {"Similarity": similar_dict}
 
-    def filter_genomes_logic(self, similarity_threshold: float):
+    def filter_genomes_logic(self, similarity_threshold: float) -> None:
         filtered_genomes = self.filter_reference_based_on_similarity(
             similarity_threshold)
-        return json.dumps(self.similarity_json(filtered_genomes))
+        self._similarity_results = self.similarity_json(filtered_genomes)
+
+    def print_similarity_results(self) -> str:
+        return json.dumps(self._similarity_results)

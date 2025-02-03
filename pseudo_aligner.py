@@ -26,9 +26,9 @@ class PseudoAlignerOutput:
         self._unique_mapped_reads = 0
         self._ambiguous_mapped_reads = 0
         self._unmapped_reads = 0
-        self._filtered_quality_reads = 0
-        self._filtered_quality_kmers = 0
-        self._filtered_hr_kmers = 0
+        self._filtered_quality_reads = -1
+        self._filtered_quality_kmers = -1
+        self._filtered_hr_kmers = -1
         self._genome_list: List[str] = extract_genomes_list(genome_list_str,
                                                             kmer_reference) if coverage_included else []
 
@@ -115,6 +115,10 @@ class AlnFileDataObject:
         self._filtered_hr_kmers = aligner_output.filtered_hr_kmers
         self._reverse_complement_included = is_reversed
         self._genome_list = aligner_output.genome_list
+        self._coverage_results: dict = {}
+
+    def check_coverage_was_applied(self) -> bool:
+        return self._coverage_results != {}
 
     def genomes_mapped_to_dict(self) -> Dict[str, Dict[str, int]]:
         if not self._reverse_complement_included:
@@ -127,20 +131,20 @@ class AlnFileDataObject:
                 k + "_R": v.genome_mapped_to_dict(is_reversed=True) for k, v in
                 self.genomes_db.items()}
 
-    def read_stats_to_dict(self, **kwargs) -> Dict[str, int]:
+    def read_stats_to_dict(self) -> Dict[str, int]:
         summary = {"unique_mapped_reads": self._unique_mapped_reads,
                    "ambiguous_mapped_reads": self._ambiguous_mapped_reads,
                    "unmapped_reads": self._unmapped_reads}
-        if kwargs.get("min_read_quality") is not None:
+        if self._filtered_quality_reads >= 0:
             summary["filtered_quality_reads"] = self._filtered_quality_reads
-        if kwargs.get("min_quality_kmer") is not None:
+        if self._filtered_quality_kmers >= 0:
             summary["filtered_quality_kmers"] = self._filtered_quality_kmers
-        if kwargs.get("min_hr_kmer") is not None:
+        if self._filtered_hr_kmers >= 0:
             summary["filtered_hr_kmers"] = self._filtered_hr_kmers
         return summary
 
-    def to_json(self, **kwargs):
-        return json.dumps({"Statistics": self.read_stats_to_dict(**kwargs),
+    def to_json(self):
+        return json.dumps({"Statistics": self.read_stats_to_dict(),
                            "Summary": self.genomes_mapped_to_dict()})
 
     def coverage_statistics_summary(self, min_coverage: int):
@@ -154,14 +158,17 @@ class AlnFileDataObject:
                 genome in
                 self._genome_list}
 
-    def to_coverage_json(self, apply_full_coverage: bool, min_coverage: int):
+    def coverage_logic(self, apply_full_coverage: bool, min_coverage: int):
         if not apply_full_coverage:
-            return json.dumps(
-                {"Coverage": self.coverage_statistics_summary(min_coverage)})
+            self._coverage_results = {
+                "Coverage": self.coverage_statistics_summary(min_coverage)}
         else:
-            return json.dumps(
-                {"Coverage": self.coverage_statistics_summary(min_coverage),
-                 "Details": self.full_coverage_stats()})
+            self._coverage_results = {
+                "Coverage": self.coverage_statistics_summary(min_coverage),
+                "Details": self.full_coverage_stats()}
+
+    def print_coverage_results(self):
+        return json.dumps(self._coverage_results)
 
 
 def should_filter_read(read: Read, min_read_quality: int) -> bool:
@@ -297,6 +304,23 @@ def extract_genomes_list(genome_list_str: Optional[str],
     return genome_list
 
 
+def initialize_filtering_stats(aligner_output:PseudoAlignerOutput, **kwargs):
+    """
+    This function initializes the filtering stats in the aligner_output
+    :param aligner_output: the aligner output
+    :param kwargs: the arguments given by the user that include the filtering flag
+    :return: None
+    """
+    min_read_quality = kwargs.get("min_read_quality")
+    if min_read_quality is not None:
+        aligner_output.filtered_quality_reads = 0
+    min_kmer_quality = kwargs.get("min_kmer_quality")
+    if min_kmer_quality is not None:
+        aligner_output.filtered_quality_kmers = 0
+    max_genomes = kwargs.get("max_genomes")
+    if max_genomes is not None:
+        aligner_output.filtered_hr_kmers = 0
+
 def align_algorithm(fastq_file_path: str,
                     kmer_reference: KmerReference,
                     current_unique_threshold: int,
@@ -320,10 +344,10 @@ def align_algorithm(fastq_file_path: str,
     # mypy might be unhappy but there is an action in the argsparse - store_true
     aligner_output = PseudoAlignerOutput(kmer_reference, check_coverage,
                                          genome_list_str)
+    initialize_filtering_stats(aligner_output, **kwargs)
     # mypy might be unhappy but in the argsparser, there is a default value
     min_read_quality = kwargs.get("min_read_quality")
-    filter_by_quality = min_read_quality is not None
-    min_read_quality = int(min_read_quality) if filter_by_quality else None
+    filter_read_by_quality = min_read_quality is not None
     check_coverage = kwargs.get("coverage")
     genome_list = aligner_output.genome_list
     if check_coverage:
@@ -335,7 +359,8 @@ def align_algorithm(fastq_file_path: str,
             if read.identifier in aligner_output.reads:
                 raise ValueError("Duplicate reads detected")
             # Check whether the quality of the entire read is sufficient
-            if filter_by_quality and should_filter_read(read, min_read_quality):
+            # same here for mypy...
+            if filter_read_by_quality and should_filter_read(read, min_read_quality):
                 aligner_output.filtered_quality_reads += 1
                 continue
             aligner_output.add_read(read)

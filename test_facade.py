@@ -78,6 +78,10 @@ COVERAGE_OUTPUT_FOR_READS = {"Coverage": {
 
 
 def test_build_reference():
+    """
+    This basic test checks that the building reference function works correctly
+    :return: None
+    """
     reference = build_testing_reference()
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
@@ -88,6 +92,11 @@ def test_build_reference():
 
 
 def test_reference_command_3_1(monkeypatch):
+    """
+    This test checks the 3.1 command - the reference command
+    :param monkeypatch: mock used to convert argv
+    :return: None
+    """
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     kdb_file = create_temporary_file(EMPTY_FILE, KDB_FILE_TYPES[0])
@@ -108,6 +117,11 @@ def test_reference_command_3_1(monkeypatch):
 
 
 def test_reference_insufficient_arguments(monkeypatch):
+    """
+    This function checks the call for a reference command without a genome file
+    :param monkeypatch: mock used to convert argv
+    :return: None
+    """
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     kdb_file = create_temporary_file(EMPTY_FILE, KDB_FILE_TYPES[0])
@@ -128,6 +142,12 @@ def test_reference_insufficient_arguments(monkeypatch):
 
 
 def test_dumpref_command_3_2(monkeypatch, capsys):
+    """
+    This function tests the 3.2 command - the dumpref with a given kdb file
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     kdb_file = create_temporary_file(EMPTY_FILE, KDB_FILE_TYPES[0])
@@ -153,6 +173,12 @@ def test_dumpref_command_3_2(monkeypatch, capsys):
 
 
 def test_dumpref_command_3_3(monkeypatch, capsys):
+    """
+    This test checks the output of the dumpref command with  a genome file a kmersize
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     reference = build_testing_reference()
@@ -168,6 +194,12 @@ def test_dumpref_command_3_3(monkeypatch, capsys):
 
 
 def test_dumpref_command_no_ref(monkeypatch, capsys):
+    """
+    This test checks the output of the dumpref command without any parameter
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
     monkeypatch.setattr(sys, "argv",
                         ["main.py", "-t", "dumpref"])
     args = main.readargs(sys.argv[1:])
@@ -176,6 +208,13 @@ def test_dumpref_command_no_ref(monkeypatch, capsys):
 
 
 def test_dumpref_command_wrong_params(monkeypatch, capsys):
+    """
+    This test checks the output of the dumpref command with the wrong parameters
+    genome file kmer size and kdb file given - invalid input for the dumpref command
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
     monkeypatch.setattr(sys, "argv",
                         ["main.py", "-t", "dumpref", "--genomefile",
                          "Gsdfgsd", "-k", "4", "--referencefile",
@@ -186,6 +225,13 @@ def test_dumpref_command_wrong_params(monkeypatch, capsys):
 
 
 def test_align_insuffiecient_params(monkeypatch, capsys):
+    """
+    This test checks the output of the align command with insufficient parameters
+    No parameters given
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
     monkeypatch.setattr(sys, "argv",
                         ["main.py", "-t", "align"])
     args = main.readargs(sys.argv[1:])
@@ -194,6 +240,11 @@ def test_align_insuffiecient_params(monkeypatch, capsys):
 
 
 def test_align_3_4(monkeypatch):
+    """
+    This function tests the 3.4 command - the align command which creates an align file
+    :param monkeypatch: mock used to convert argv
+    :return: None
+    """
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     align_file = create_temporary_file(EMPTY_FILE, ALN_FILE_TYPES[0])
@@ -231,6 +282,12 @@ def test_align_3_4(monkeypatch):
 
 
 def test_align_3_5(monkeypatch, capsys):
+    """
+    This function tests the 3.5 command - align command with a given genome file and kmer zise
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     align_file = create_temporary_file(EMPTY_FILE, ALN_FILE_TYPES[0])
@@ -259,11 +316,18 @@ def test_align_3_5(monkeypatch, capsys):
 
 
 def test_dumpalign_invalid_input(monkeypatch, capsys):
+    """
+    This test checks the output of the dumpalign command with invalid parameters
+    There are various types of invalid input - each is explained in the response the user gets
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
     monkeypatch.setattr(sys, "argv",
                         ["main.py", "-t", "dumpalign"])
     args = main.readargs(sys.argv[1:])
     dumpalign_command(args)
-    assert capsys.readouterr().out.strip() == "No reads file given - invalid input for the dumpalign command"
+    assert capsys.readouterr().out.strip() == "No reads and no aln file given - invalid input for the dumpalign command"
 
     monkeypatch.setattr(sys, "argv",
                         ["main.py", "-t", "dumpalign", "-a", "njl", "-r",
@@ -284,6 +348,12 @@ def test_dumpalign_invalid_input(monkeypatch, capsys):
 
 
 def test_dumpalign_3_6(monkeypatch, capsys):
+    """
+    This function tests the 3.6 command - dumpalign with a given aln file
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     align_file = create_temporary_file(EMPTY_FILE, ALN_FILE_TYPES[0])
@@ -324,6 +394,12 @@ def test_dumpalign_3_6(monkeypatch, capsys):
 
 
 def test_dumpalign_3_7(monkeypatch, capsys):
+    """
+    This function tests the 3.7 command which receives a reference and a reads file
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     fastq_file = create_temporary_file(FASTQ_FILE_SINGLE_READ,
@@ -354,6 +430,12 @@ def test_dumpalign_3_7(monkeypatch, capsys):
 
 
 def test_dumpalign_3_8(monkeypatch, capsys):
+    """
+    This function tests the 3.8 command (dumpalign) which receives a genome file and a reads file as well as a kmer size
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     fastq_file = create_temporary_file(FASTQ_FILE_SINGLE_READ,
@@ -376,6 +458,12 @@ def test_dumpalign_3_8(monkeypatch, capsys):
 
 
 def test_4_3_coverage_dumplalign(monkeypatch, capsys):
+    """
+    This function tests the 4.3 extension of the coverage.
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     fastq_file = create_temporary_file(COVERAGE_EXAMPLE_READS,
@@ -391,65 +479,66 @@ def test_4_3_coverage_dumplalign(monkeypatch, capsys):
 
     dumpalign_command(args)
     assert json.loads(str.split(capsys.readouterr().out, '\n')[
-                          0].strip()) == json.loads(
+                          1].strip()) == json.loads(
         json.dumps(COVERAGE_OUTPUT_FOR_READS))
 
 
 def test_4_3_coverage_dumpalign_specific_genome(monkeypatch, capsys):
-    k = 3
-    ref_content = b">Mouse\nAAACTCAAACCC\n>Cat\nAACCTTTTTTT"
+    """
+    This function tests the 4.3 extension of the coverage with a parameter of specific genomes to check their coverage.
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
+    genome_file = b">Cat\nAACCTTTTTNTNTGT\n>Mouse\nAAAGTTGGTTGCAAACCC\n"
 
-    reads_content = (
-        b"@READ1\nAAAAAAAAAAA\n+\n!!!!!!!!!!!\n@READ2\nCCCAAA\n+\n??????\n@Read3\n"
-        b"ACCT\n+\n?!?!")
-    reads_path = create_temporary_file(reads_content, FASTQ_FILE_TYPES[0])
-    genome_path = create_temporary_file(ref_content, FASTA_FILE_TYPES[0])
+    fastq_file = (
+        b"@READ1\nAAAAAAAAAAA\n+\nABCDEFGHIJK\n@READ2\nGGCCCAAAG\n+\n123456789\n@Read3\n"
+        b"AACCTTTTT\n+\n986533332")
+    reads_path = create_temporary_file(fastq_file, FASTQ_FILE_TYPES[0])
+    genome_path = create_temporary_file(genome_file, FASTA_FILE_TYPES[0])
 
     monkeypatch.setattr(sys, 'argv',
-                        ["main.py", "-t", "dumpref", '-g', genome_path, '-k',
+                        ["main.py", "-t", "dumpalign", '-g', genome_path, '-k',
                          "3",
                          '--coverage', '--genomes',
                          "Mouse", "--reads",
                          reads_path, "--full-coverage"])
     args = main.readargs()
-    dumpalign_command(args)
+    start_program(args)
+    os.remove(genome_path)
+    os.remove(reads_path)
 
-    outputs = str.split(capsys.readouterr().out.strip(), '\n', 1)
+    coverage_output = str.split(capsys.readouterr().out.strip(), '\n', 1)[1]
 
-    summary_output = json.loads(outputs[1])
-    coverage_output = json.loads(outputs[0])
-    expected_coverage = {
+    expected_coverage_result = {
         "Coverage": {
             "Mouse": {
-                "covered_bases_unique": 10,
+                "covered_bases_unique": 11,
                 "covered_bases_ambiguous": 0,
-                "mean_coverage_unique": 1.3,
+                "mean_coverage_unique": 0.9,
                 "mean_coverage_ambiguous": 0.0
             }
         },
         "Details": {
             "Mouse": {
-                "unique_cov": [2, 2, 2, 0, 0, 1, 2, 2, 2, 1, 1, 1],
-                "ambiguous_cov": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                "unique_cov": [2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 1, 1, 1],
+                "ambiguous_cov": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             }
         }
     }
-    expected_summary = {
-        "Statistics": {
-            "unique_mapped_reads": 3, "ambiguous_mapped_reads": 0,
-            "unmapped_reads": 0},
-        "Summary":
-            {"Mouse":
-                 {"unique_reads": 2, "ambiguous_reads": 0},
-             "Cat":
-                 {"unique_reads": 1, "ambiguous_reads": 0}}}
-    assert coverage_output == expected_coverage
-    assert expected_summary == summary_output
-    os.remove(genome_path)
-    os.remove(reads_path)
+
+    assert json.loads(coverage_output) == json.loads(
+        json.dumps(expected_coverage_result))
 
 
 def test_function_calls(monkeypatch):
+    """
+    This function tests the function calls - calls the start_program method instead of the
+    specific funtion of the given command
+    :param monkeypatch: mock used to convert argv
+    :return: None
+    """
     genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
                                               FASTA_FILE_TYPES[0])
     kdb_file = create_temporary_file(EMPTY_FILE, KDB_FILE_TYPES[0])
@@ -470,6 +559,12 @@ def test_function_calls(monkeypatch):
 
 
 def test_function_calls_invalid_task(monkeypatch, capsys):
+    """
+    This funciton checks the case in which a given task isnn't a valid task
+    :param monkeypatch: mock used to convert argv
+    :param capsys: used to capture stdout
+    :return: None
+    """
     monkeypatch.setattr(sys, "argv",
                         ["main.py", "-t", "re1"])
     args = main.readargs(sys.argv[1:])

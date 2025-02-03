@@ -53,6 +53,15 @@ def create_temporary_file(content: bytes, wanted_suffix: str) -> str:
 
 def check_outputs_in_file(file_path: str,
                           expected_outputs: List[object], generator_from_file:Callable[[str], Generator]) -> None:
+    """
+    This function reads a file using a given generator_from_file object.
+    the object is a callable that returns a generator for the items in the file
+    It makes sure the file contains all the items that are in the expected outputs list.
+    :param file_path: the file to open
+    :param expected_outputs: the list of expected outputs
+    :param generator_from_file: the function to call in order to parse all items from the file
+    :return: None
+    """
     outputs_from_file = []
     try:
         for genome in generator_from_file(file_path):
@@ -65,6 +74,10 @@ def check_outputs_in_file(file_path: str,
         range(len(outputs_from_file)))
 
 def test_parse_fastq_file_valid():
+    """
+    This function checks the parsing of a valid fastq file
+    :return:
+    """
     expected_read_output = [Read("NAME", "ATCGC", "ABCDE")]
     fastq_file_path = create_temporary_file(VALID_FASTQ_FILE,
                                             FASTQ_FILE_TYPES[0])
@@ -72,6 +85,10 @@ def test_parse_fastq_file_valid():
 
 
 def test_parse_fastq_file_invalid():
+    """
+    This function checks various cases of the parse_fastq_file where the input is invalid
+    :return:
+    """
     fastq_file_path = create_temporary_file(NO_HEADER_FASTQ_FILE,
                                             FASTQ_FILE_TYPES[0])
     check_outputs_in_file(fastq_file_path, [], file_handlers.parse_fastq_file)
@@ -97,6 +114,10 @@ def test_parse_fastq_file_invalid():
 
 
 def test_parse_fasta_file_valid():
+    """
+    This function checks the parsing of a valid fasta file
+    :return:
+    """
     expected_genome_output = [ReferencedGenome("GENOME1", "ATCGNCG", 0),
                               ReferencedGenome("GENOME2", "ATCGNNNN", 1)]
     fasta_file_path = create_temporary_file(VALID_FASTA_FILE,
@@ -106,6 +127,10 @@ def test_parse_fasta_file_valid():
 
 
 def test_parse_fasta_file_invalid():
+    """
+    This function checks various cases of the parse_fasta_file where the input is invalid
+    :return:
+    """
     fasta_file_path = create_temporary_file(NO_GENOME_FASTA_FILE,
                                             FASTA_FILE_TYPES[0])
     check_outputs_in_file(fasta_file_path, [], file_handlers.parse_fasta_file)
@@ -129,6 +154,10 @@ def test_parse_fasta_file_invalid():
 
 
 def test_write_and_read_pickle_file():
+    """
+    This funciton checks the writing of both KmerReference and AlnFileDataObject items to a pickled file
+    :return:
+    """
     reference = KmerReference(31)
     align_output = AlnFileDataObject(PseudoAlignerOutput(reference), False)
     aln_file_path = create_temporary_file(b"",ALN_FILE_TYPES[0])

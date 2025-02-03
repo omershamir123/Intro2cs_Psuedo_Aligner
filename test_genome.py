@@ -9,16 +9,24 @@
 import pytest
 
 from genome import ReferencedGenome
-from program_constants import UNIQUE_KMER, MULTI_MAP_KMER
 
 
 def test_init():
+    """
+    This function tests the initialization of the reference genome
+    :return:
+    """
     genome1 = ReferencedGenome("genome1", "ATCNG", 2)
     assert genome1 is not None and genome1.sequence == "ATCNG"
     with pytest.raises(ValueError):
         ReferencedGenome("genome1", "ATCfNG", 3)
 
 def test_kmer_add_to_genome():
+    """
+    This function tests that the kmer addition to a genome works fine,
+    and makes sure it's a set so no duplicates added
+    :return:
+    """
     genome1 = ReferencedGenome("genome1", "ATCNG", 2)
 
     genome1.add_kmer_to_genome_mapping("KMER1")
@@ -30,6 +38,11 @@ def test_kmer_add_to_genome():
 
 
 def test_genome_to_dict_format():
+    """
+    This function tests that the genome_to_dict function works fine, with all the dictionaries
+    coming out in the right format
+    :return:
+    """
     genome1 = ReferencedGenome("genome1", "ATCNG", 2)
     genome1.unique_reads += 1
     genome1.ambiguous_reads += 10

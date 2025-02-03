@@ -13,7 +13,8 @@ from program_constants import UNMAPPED_READ, UNIQUE_READ, AMBIGUOUS_READ, \
     FASTQ_FILE_TYPES
 from pseudo_aligner import PseudoAlignerOutput, should_filter_read, map_read, \
     extract_and_map_kmers_from_read, _map_read_using_specific_kmers, \
-    validate_uniqueness_using_unspecific, align_algorithm, extract_genomes_list
+    validate_uniqueness_using_unspecific, align_algorithm, extract_genomes_list, \
+    initialize_filtering_stats
 from read import Read, ReadKmerMapping
 from test_file_handlers import create_temporary_file
 from test_kmer_reference import build_testing_reference
@@ -30,6 +31,10 @@ FASTQ_FILE_REVERSE_SINGLE_READ = (b"@READ1\n"
 
 
 def test_add_read_update_stats():
+    """
+    This function tests the update stats + add read functionality of the alignerOutput
+    :return: None
+    """
     read1 = Read("READ1", "ATCG", "1111")
     read2 = Read("READ2", "ATCGG", "11111")
     read3 = Read("READ3", "AATCG", "11111")
@@ -60,6 +65,10 @@ def test_add_read_update_stats():
 
 
 def test_should_filter_read():
+    """
+    This function checks the functionality of should_filter_read
+    :return:
+    """
     read1 = Read("READ1", "ATCG", "1111")
     read2 = Read("READ2", "ATCGG", "00000")
     min_read_quality = 16
@@ -69,6 +78,10 @@ def test_should_filter_read():
 
 
 def test_map_read():
+    """
+    This function checks the functionality of map_read - maps the reads and updates the unique_reads + ambiguous reads
+    :return:
+    """
     read1 = Read("READ1", "ATCG", "1111")
     read2 = Read("READ2", "CCCC", "1111")
     read3 = Read("READ3", "TTTT", "1111")
@@ -89,6 +102,11 @@ def test_map_read():
 
 
 def test_extract_and_map_kmers_from_read():
+    """
+    This function checks the functionality of extract_and_map_kmers_from_read
+    as well as them being either specific or unspecific
+    :return:
+    """
     read1 = Read("READ1", "ATCGAAAATTTTACAC", "ATCGAAAATTTTACAC")
     reference = build_testing_reference()
     aligner_output = PseudoAlignerOutput(reference)
@@ -115,6 +133,11 @@ def test_extract_and_map_kmers_from_read():
 
 
 def test_extract_and_map_kmers_from_read_with_filter_kmer_quality():
+    """
+    This function checks the functionality of extract_and_map_kmers_from_read
+    but with a filter quality threshold of an entire kmer
+    :return:
+    """
     read1 = Read("READ1", "ATCGAAAATTTTACAC", "0111111111111111")
     reference = build_testing_reference()
     aligner_output = PseudoAlignerOutput(reference)
@@ -132,6 +155,7 @@ def test_extract_and_map_kmers_from_read_with_filter_kmer_quality():
     expected_kmer_mapping.unspecific_kmers_in_genomes["Mouse"] = ["AAAA"]
     expected_kmer_mapping.unspecific_kmers_in_genomes["Otter"] = ["TTTT"]
 
+    initialize_filtering_stats(aligner_output, min_kmer_quality=16)
     read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference,
                                                         aligner_output,
                                                         min_kmer_quality=16)
@@ -141,10 +165,16 @@ def test_extract_and_map_kmers_from_read_with_filter_kmer_quality():
 
 
 def test_extract_and_map_kmers_from_read_with_full_filter():
+    """
+    This function tests that all the read's kmers are filtered out
+    :return:
+    """
     read1 = Read("READ1", "ATCGAAAATTTTACACNNNNNN", "0111111111111111AAAAAA")
     reference = build_testing_reference()
     aligner_output = PseudoAlignerOutput(reference)
     expected_kmer_mapping = ReadKmerMapping()
+
+    initialize_filtering_stats(aligner_output, min_kmer_quality=17)
 
     # no kmer in the read will be with sufficient quality, though the read itself might be
     # due to the presence of N in the sequence
@@ -167,6 +197,7 @@ def test_extract_and_map_kmers_from_read_with_full_filter():
     expected_kmer_mapping.specific_kmers_in_genomes["Moose"] = ["ACAC"]
     expected_kmer_mapping.specific_kmers_in_genomes["Turtle"] = ["TTTA"]
 
+    initialize_filtering_stats(aligner_output, min_kmer_quality=16, max_genomes=1)
     # The first kmer will be filtered out due to quality, two kmers will be filtered out due to max genomes
     read_kmer_mapping = extract_and_map_kmers_from_read(read1, reference,
                                                         aligner_output,
@@ -178,6 +209,10 @@ def test_extract_and_map_kmers_from_read_with_full_filter():
 
 
 def test_map_read_using_specific_kmers_one_specific_unique():
+    """
+    This function checks the mapping of a specific kmer to a unique reads
+    :return:
+    """
     read1 = Read("READ1", "ACACACAC", "11111111")
     reference = build_testing_reference()
     aligner_output = PseudoAlignerOutput(reference)
@@ -192,6 +227,10 @@ def test_map_read_using_specific_kmers_one_specific_unique():
 
 
 def test_map_read_using_specific_kmers_unique():
+    """
+    This function tests the case of a read being mapped as unique using the m parameter
+    :return:
+    """
     read1 = Read("READ1", "ACACAATCG", "111111111")
     reference = build_testing_reference()
     aligner_output = PseudoAlignerOutput(reference)
@@ -207,6 +246,11 @@ def test_map_read_using_specific_kmers_unique():
 
 
 def test_map_read_using_specific_kmers_ambiguous():
+    """
+    This function tests a case where a read is ambiguously mapped before checking
+    unspecific kmers
+    :return:
+    """
     read1 = Read("READ1", "ATCGAAAATTTTACAC", "ATCGAAAATTTTACAC")
     reference = build_testing_reference()
     aligner_output = PseudoAlignerOutput(reference)
@@ -223,6 +267,11 @@ def test_map_read_using_specific_kmers_ambiguous():
 
 
 def test_validate_uniqueness_using_unspecific_kmers_changes_to_ambiguous():
+    """
+    This function tests a case where a read is uniquely mapped and doesn't stay that way after the validation
+    using unspecific kmers
+    :return:
+    """
     read1 = Read("READ1", "ATCGAAAATTTTACACA", "ATCGAAAATTTTACACA")
     reference = build_testing_reference()
     aligner_output = PseudoAlignerOutput(reference)
@@ -243,6 +292,11 @@ def test_validate_uniqueness_using_unspecific_kmers_changes_to_ambiguous():
 
 
 def test_validate_uniqueness_using_unspecific_kmers_stays_unique():
+    """
+    This function tests a case where a read is uniquely mapped and stays that way after the validation
+    using unspecific kmers
+    :return:
+    """
     read1 = Read("READ1", "ATCGAAAATTTTACACACA", "ATCGAAAATTTTACACACA")
     reference = build_testing_reference()
     aligner_output = PseudoAlignerOutput(reference)
@@ -262,6 +316,10 @@ def test_validate_uniqueness_using_unspecific_kmers_stays_unique():
 
 
 def test_align_algorithm():
+    """
+    This funciton checks the functionality of a simple align algorithm (no extensions)
+    :return:
+    """
     fastq_file_path = create_temporary_file(FASTQ_FILE_SINGLE_READ,
                                             FASTQ_FILE_TYPES[0])
     reference = build_testing_reference()
@@ -287,6 +345,10 @@ def test_align_algorithm():
 
 
 def test_align_algorithm_reverse():
+    """
+    This function checks the functionality of the align algorithm with the reverse complement extension
+    :return:
+    """
     fastq_file_path = create_temporary_file(FASTQ_FILE_REVERSE_SINGLE_READ,
                                             FASTQ_FILE_TYPES[0])
     reference = build_testing_reference()
@@ -320,6 +382,11 @@ def test_align_algorithm_reverse():
 
 
 def test_extract_genomes_list():
+    """
+    This function checks the functionality of a extraction of the genomes list for
+    the coverage extension
+    :return:
+    """
     reference = build_testing_reference()
     expected_genome_list = ["Mouse", "Duck", "Otter", "Turtle", "Moose",
                             "Virus"]
@@ -328,9 +395,14 @@ def test_extract_genomes_list():
 
     expected_genome_list = ["Mouse", "Otter"]
     genomes_list = extract_genomes_list("Mouse,Otter", reference)
+    assert genomes_list == expected_genome_list
 
 
 def test_align_algorithm_read_filtered_due_to_quality():
+    """
+    This function checks the align algorithm with the case that a read is completely filtered out
+    :return:
+    """
     fastq_file_path = create_temporary_file(FASTQ_FILE_SINGLE_READ,
                                             FASTQ_FILE_TYPES[0])
     reference = build_testing_reference()
@@ -340,7 +412,8 @@ def test_align_algorithm_read_filtered_due_to_quality():
 
     expected_reads_stats = {"unique_mapped_reads": 0,
                             "ambiguous_mapped_reads": 0,
-                            "unmapped_reads": 0}
+                            "unmapped_reads": 0,
+                            "filtered_quality_reads": 1}
     expected_mapped_genome_stats = {
         "Mouse_F": {"unique_reads": 0, "ambiguous_reads": 0},
         "Duck_F": {"unique_reads": 0, "ambiguous_reads": 0},
