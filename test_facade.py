@@ -493,8 +493,8 @@ def test_4_3_coverage_dumpalign_specific_genome(monkeypatch, capsys):
     genome_file = b">Cat\nAACCTTTTTNTNTGT\n>Mouse\nAAAGTTGGTTGCAAACCC\n"
 
     fastq_file = (
-        b"@READ1\nAAAAAAAAAAA\n+\nABCDEFGHIJK\n@READ2\nGGCCCAAAG\n+\n123456789\n@Read3\n"
-        b"AACCTTTTT\n+\n986533332")
+        b"@READ1\nAACCTTTTT\n+\n986533332\n@READ2\nGGCCCAAAG\n+\n123456789\n@Read3\n"
+        b"AAAAAAAAAAA\n+\nABCDEFGHIJK\n")
     reads_path = create_temporary_file(fastq_file, FASTQ_FILE_TYPES[0])
     genome_path = create_temporary_file(genome_file, FASTA_FILE_TYPES[0])
 
