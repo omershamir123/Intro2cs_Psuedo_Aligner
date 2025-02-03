@@ -5,7 +5,7 @@
 # STUDENTS I DISCUSSED THE EXERCISE WITH:
 # WEB PAGES I USED:
 # NOTES:
-from typing import List, Set
+from typing import Set
 
 import numpy as np
 from numpy import ndarray
@@ -15,6 +15,9 @@ from validators import validate_values_in_given_list, validate_above_value
 
 
 class ReadKmerMapping:
+    """
+    This class is a data object that is used in the pseudo align algorithm for a specific read
+    """
     def __init__(self):
         self._specific_kmers = []
         self._unspecific_kmers = []
@@ -47,6 +50,10 @@ def reverse_complement(value: str) -> str:
 
 
 class Read:
+    """
+    This is an important entity in our program - it holds the records of a single read from a fastq file
+    It is being used in the align algorithm to increment and manipulate various attributes
+    """
     def __init__(self, identifier: str, value: str, quality: str) -> None:
         """
         This function initializes a Read instance.

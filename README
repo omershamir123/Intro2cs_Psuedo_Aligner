@@ -1,17 +1,138 @@
-# Project Title / Student Name
+# Shotgun Metagenomics Pseudo-alignment / Omer Shamir
+
+NOTE: in order to see what arguments must be given for the program to run. enter main.py --help 
+How the program runs:
+From main.py - the argsparse parses the parameters and enforces some constraints - integers, required types, store-true types...
+Then the facade is called which holds a dictionary of Callables that each contain the function of the given task (reference, dumpref, align, dumpalign)
+Based on the required paramter -t the correct function is called.
+Note that you can easily add more functions and tasks by adding them to the dictionary.
+
 
 ## Extensions:
 
-* Nice extension - does such and such.
+NOTE: all extension are compatible with each other and can be run all together 
 
-* Silly extension - does something else, but only works for prime numbers.
+* 4.1 - EXTQUALITY
+During the align algorithm, the quality of the read is first calculated via read.calculate_mean_quality()
+This function is also compatible with calculating the kmer-quality since it has more parameters for start+ending_index
+This extension uses numpy since my quality array is a numpy array
+I have chosen that so that the average function will be calculated fast, and since slicing in numpy doesn't create another array
+but a view of the original hence saving some memory allocation
 
-Works by calling the perpetual motion library, which only works
-on prime numbers. Solving for composite numbers would also require
-a time machine.
+* 4.2 - EXTREVCOMP
+This algorithm in which we choose the better orientation is as described in the forum
+This extension was implemented using an attribute of the read "is_reversed". If is_reversed == True, then read.value will be the reverse complement
+
+* 4.3 - EXTCOVERAGE
+This extension was implemented using numpy arrays and boolean masking in numpy for each genome that needs a coverage report.
+The reason for choosing numpy is to use the numpy array eficcient addition and boolean masking
+IMPORTANT: the coverage report is saved under the AlnFileDataObject and will only be printed out in the dumpalign command and not in the align command
+
+* 4.4 - EXTSIM
+This extension's purpose is to avoid unmapped/ambiguous reads of genomes that are highly similar.
+Note: In this extension we count K1 + K2 as a Set of kmers.
+Meaning the similarity score is based on duplicate kmers not being double-counted!
+IMPORTANT: the similarity report is saved under the KmerReference(KDB file) and will only be printed out in the dumpref command and not in the reference command
+
+
+* Small feature - Kmer-extraction - 'N' handling
+You can easily implement in my code to inded extract the kmers with 'N' or maybe not extract kmers that contain other values
+That's because I was the constants in the program_constants.py
+
+* Small feature - Addition of more file types to unpickle
+The file types of each file is saved as a list in the constants and can easily be changed
+
 
 ## Design
 
-We chose a perpetual motion machine over a time machine because
-of the aging cost of moving to the past, and the dangerous paradoxes
-which can arise.
+There are two important entities in my project - ReferencedGenome, Read
+Each one holds various attributes for all the commands and extensions.
+All classes contains properties using the property decorator, some are simplistic while others are a bit more unique (eg. Read.value)
+
+Most classes contains dictionaries and Set due to the hashing mechanism in both data structures that offers used
+search, insertion, and update in O(1). 
+When there is a need for a key-value pair, a dictionary is used.
+However, in many cases (eg. genome's kmers) a Set is sufficient
+
+Helper modules:
+1. program_constants.py
+	As mentioned above, all the constants used in the project are saved there.
+	This helps to manage the configuration of the project and to have a place where all module take their "static" input from
+2. file_handlers.py
+	The module handles the reading from fasta + fastq files, making sure the files are in correct format
+	The module also handles the writing of the KDB + ALN files as pickled objects that are then compressed to a gzip file
+	I have chosen this in order to mask the file IO operations from all modules other than this one.
+3. validators.py
+	The module contains various validation functions to be used in the entire project.
+	For most validations, if the input isn't valid, an exception is raised
+
+My main classes:
+
+1. ReferencedGenome:
+A class that holds all of the properties needed for a genome both in the reference/dumpref commands and in the align/dumpalign commands
+
+Main functionalities:
+creating dictionaries for the output of dumpref, dumpalign commands as well as coverage, reverse-complement extensions
+
+2. KmerReference:
+Properties:
+-kmer_db: Dict[str, Dict[str, List[int]]] - the DB where all the kmers are stored.
+	The key of the dictionary is the kmer value, the value is a dictionary of the genomes and their respective positions
+-genomes_db: Dict[str, ReferencedGenome] - the db of all the genomes in the 
+	The key is the genome identifier as it appears in the fasta file
+- similarity_results - holds the similarity results if the reference was built with the --filter-similar flag	
+Main functionalities:
+- build_reference - with a given fasta file, the kmer_Db is calculated (using file_handlers.parse_fasta_file)
+- calculate_kmers_types - once the reference is built, the function calculates for each genome their unique + multi-map kmer count
+- filter similarity - 4.4 algorithm
+- reference to json for dumpref
+
+I have decided to not implement a Kmer class since it my perspective and implementation, the kmers are simply strings matched to genomes or list
+They don't hold any properties other than the ones that are saved in the KmerReference.kmer_db 
+
+3. Read
+Contains the values of a signle read from a fastq file, it's an object that is returned by the generator parse_fastq_file
+
+Main functionalities:
+-Calculate_mean_quality of a given sequence in the read (using numpy.mean)
+
+4. ReadKmerMapping
+An object used in the middle of the align algorithm that calculates for a read its kmers and them being specific/unspecific in a given kmer reference
+
+
+5. PsuedoAlignerOutput
+An object that is passed throughduring the align algorithm that contains all of the data from the algorithm
+
+Main functionalities:
+- update read status - updates a read's status and accordingly the genome that it's mapped to
+
+6. AlignFileDataObject
+A minimized version of the PseudoAlignerOutput class that only contains the necessary items for the aln file
+
+Main functionalities:
+- calculate coverage json
+- calculate dumpalign json
+
+
+Input validation (in addition to the argsparse validation):
+- Files must contain 1 genome in the fasta or 1 read in the fastq
+- Fles must contain valid genome 
+- Files must contain valid reads (all 4 lines included, quality + read_value the same length, quality values must be above 0)
+- Files must be of the correct types
+- Sequences can only hold ATCGN
+- No duplicate read OR genome identifier in the files
+- Files must be reachable
+- Pןckled files have to be unpickled properly
+- The task given as input must be a known task
+- kmer_size + unique_threshold must be above 0
+
+Testing Coverage: 
+I have built and written tests for all modules, the testing coverage stands on 93%
+
+Mypy: 
+Once running mypy on my project, there will appear 4 errors, all of which have in-line comments explaining
+why since my program has previous assumptions on the values, the mypy error will not occur.
+
+Note: 
+If a given genome has no kmers extracted from it - can be either due to its length or due to the presence of N,
+it will still be included in the genomes_db and align result

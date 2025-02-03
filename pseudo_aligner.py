@@ -17,7 +17,9 @@ from read import Read, ReadKmerMapping
 
 
 class PseudoAlignerOutput:
-
+    """
+    This class is an object that holds data regarding a specific pseudo align algorithm run
+    """
     def __init__(self, kmer_reference: KmerReference,
                  coverage_included: bool = False,
                  genome_list_str: Optional[str] = None):
@@ -105,6 +107,10 @@ class PseudoAlignerOutput:
 
 
 class AlnFileDataObject:
+    """
+    This class holds the relevant data from the result of a pseudo align algorithm run.
+    It is the object that is being put inside an ALN file
+    """
     def __init__(self, aligner_output: PseudoAlignerOutput, is_reversed: bool):
         self.genomes_db = aligner_output.kmer_reference.genomes_db
         self._unique_mapped_reads = aligner_output.unique_mapped_reads

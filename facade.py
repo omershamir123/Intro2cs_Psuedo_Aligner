@@ -14,6 +14,8 @@ import validators
 from kmer_reference import KmerReference
 from program_constants import KDB_FILE_TYPES, ALN_FILE_TYPES
 from pseudo_aligner import AlnFileDataObject
+from validators import validate_above_value
+
 
 def build_reference(kmer_size: int, genomefile: str) -> Optional[KmerReference]:
     """
@@ -37,6 +39,24 @@ def build_reference(kmer_size: int, genomefile: str) -> Optional[KmerReference]:
     return None
 
 
+def validate_similarity_threshold(similarity_threshold: float) -> bool:
+    """
+    This function checks the similarity threshold to make sure it is between the values 0-1
+    :param similarity_threshold: the similarity threshold to check
+    :return: True if the similarity threshold is valid, False otherwise
+    """
+    try:
+        validate_above_value(similarity_threshold, 0, allow_equality=True)
+    except (ValueError, TypeError) as e:
+        print(e)
+        return False
+    try:
+        validate_above_value(similarity_threshold, 1, allow_equality=False)
+        print("The parameter 'similarity_threshold' is above 1")
+        return False
+    except (ValueError, TypeError) as e:
+        return True
+
 def reference_command(args: Namespace) -> None:
     """
     This function carries out the reference command - of building a reference and writing it to a kdb file
@@ -54,6 +74,8 @@ def reference_command(args: Namespace) -> None:
         # Now, if filer-similar flag is True we check the similarity score between each genome
         # and update the reference file accordingly
         if args.filter_similar:
+            if not validate_similarity_threshold(args.similarity_threshold):
+                return
             reference.filter_genomes_logic(args.similarity_threshold)
             reference.calculate_kmers_type()
         file_handlers.write_to_pickle_file(args.referencefile, reference,
@@ -76,6 +98,8 @@ def extract_reference(args: Namespace) -> Optional[KmerReference]:
             return None
         reference = build_reference(args.kmer_size, args.genomefile)
         if reference is not None and args.filter_similar and args.task == "dumpref":
+            if not validate_similarity_threshold(args.similarity_threshold):
+                return
             reference.filter_genomes_logic(args.similarity_threshold)
             reference.calculate_kmers_type()
     else:

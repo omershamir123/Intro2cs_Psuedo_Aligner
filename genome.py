@@ -10,14 +10,13 @@ from typing import Dict, Set
 import numpy as np
 from numpy import ndarray
 
-from program_constants import ALLOWED_DNA_VALUES, KMER_TYPE, UNIQUE_KMER, \
-    MULTI_MAP_KMER
+from program_constants import ALLOWED_DNA_VALUES
 from validators import validate_values_in_given_list
 
 
 class ReferencedGenome:
     """
-    This class represents a raw genome - right after it's read from the fasta file
+    This class represents a raw genome - right after it's read from the fasta file and throughout the entire program
     """
 
     def __init__(self, identifier: str, sequence: str,
@@ -107,14 +106,6 @@ class ReferencedGenome:
         return self._kmers_set
 
     @property
-    def unique_kmers_set(self) -> Set[str]:
-        return self._unique_kmers_set
-
-    @property
-    def multi_mapping_kmers_set(self) -> Set[str]:
-        return self._multi_mapping_kmers_set
-
-    @property
     def unique_coverage_positions(self) -> ndarray:
         return self._unique_coverage_positions
 
@@ -159,6 +150,11 @@ class ReferencedGenome:
                                                       dtype=int)
 
     def genome_coverage_stats(self, min_coverage: int) -> dict:
+        """
+        This function calculates the genome coverage stats given a threshold min_coverage
+        :param min_coverage: the minimal coverage of a position
+        :return: coverage results dictionary
+        """
         covered_bases_unique = int(
             (self._unique_coverage_positions >= min_coverage).sum())
         covered_bases_ambiguous = int(

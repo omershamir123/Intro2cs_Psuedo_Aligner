@@ -1,12 +1,27 @@
-# 0:30
-# Show usage instructions
-python3 main.py --help
+# 3:37
+# Dumpalign task with given exaple_genomes.fa + example_reads.fq
+python main.py -t dumpalign -g .\example_simulated_data\example_genomes.fa -k 30 --reads .\example_simulated_data\example_reads.fq
 
-# 1:20
-# Convert a sudoku puzzle to our format and solve it
-python3 main.py --convert --input puzzle1.txt --output puzzle1.json
-python3 main.py --solve --input puzzle1.json
+# 3:47
+# Run the reference task of the given genome_example.fa file with the flag --filter-similar
+ python main.py -t reference -g .\example_simulated_data\example_genomes.fa -k 30 --filter-similar -r omer_test.kdb
 
-# 2:00
-# Extension explaining solution
-python3 main.py --solve --explain --input puzzle1.json
+# 3:51
+# Run the dumpref task with the given kdb file from the previous reference task
+python main.py -t dumpref  -r omer_test.kdb
+
+# 4:00
+# Run the dumpalign task using the given kdb file instead of the original FASTA file
+python main.py -t dumpalign -r omer_test.kdb --reads .\example_simulated_data\example_reads.fq
+
+# 4:16
+# Run the dumpalign task using the given kdb + the reverse complement extension
+python main.py -t dumpalign -r omer_test.kdb --reads .\example_simulated_data\example_reads.fq --reverse-complement
+
+# 4:30
+# Run the dumalign task with the coverage extension for genome 6
+python main.py -t dumpalign -r omer_test.kdb --reads .\example_simulated_data\example_reads.fq --coverage --full-coverage --genomes genome6
+
+# 4:45
+# Run the dumpalign with filtering reads and kmers based on quality
+python main.py -t dumpalign -r omer_test.kdb --reads .\example_simulated_data\example_reads.fq --min-read-quality 4 --min-kmer-quality 3 

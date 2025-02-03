@@ -10,7 +10,7 @@ import json
 from typing import Dict, List, Generator, Tuple
 
 from genome import ReferencedGenome
-from program_constants import WILDCARD_READINGS, UNIQUE_KMER, MULTI_MAP_KMER
+from program_constants import WILDCARD_READINGS
 
 
 def extract_kmers_from_string(sequence: str, kmer_size: int,
@@ -39,7 +39,10 @@ def extract_kmers_from_string(sequence: str, kmer_size: int,
 
 
 class KmerReference:
-
+    """
+    This class is an object used to hold the entire KmerReference from a given fasta file
+    or from a KDB file
+    """
     def __init__(self, kmer_size: int):
         self._kmer_db: Dict[str, Dict[str, List[int]]] = {}
         self._genomes_db: Dict[str, ReferencedGenome] = {}
