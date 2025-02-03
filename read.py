@@ -8,6 +8,8 @@
 from typing import List, Set
 
 import numpy as np
+from numpy import ndarray
+
 from program_constants import *
 from validators import validate_values_in_given_list, validate_above_value
 
@@ -61,7 +63,7 @@ class Read:
 
         self._identifier = identifier
         self._forward_value = value
-        self._quality: List[int] = [ord(letter) - 33 for letter in quality]
+        self._quality: np.ndarray = np.array([ord(letter) - 33 for letter in quality])
 
         # Check that the quality line doesn't contain any "negative" numbers
         list(map(lambda x: validate_above_value(x, 0, True), self._quality))
@@ -74,7 +76,7 @@ class Read:
         self._read_status: READ_STATUS = UNMAPPED_READ
         self._mapped_genomes:Set[str] = set()
         self._reverse_complement: str = reverse_complement(value)
-        self._reversed_quality: List[int] = list(reversed(self._quality))
+        self._reversed_quality: ndarray = self._quality[::-1]
         self._is_reversed: bool = False
 
     @property
@@ -91,7 +93,7 @@ class Read:
         return self._forward_value if not self.is_reversed else self._reverse_complement
 
     @property
-    def quality(self) -> List[int]:
+    def quality(self) -> ndarray:
         return self._quality
 
     @property
@@ -114,7 +116,7 @@ class Read:
         self._mapped_genomes.add(genome)
 
     @property
-    def reversed_quality(self) -> List[int]:
+    def reversed_quality(self) -> ndarray:
         return self._reversed_quality
 
     @property
@@ -136,4 +138,4 @@ class Read:
         if ending_index == -1:
             ending_index = self._length
         quality_to_check = self._reversed_quality if self.is_reversed else self._quality
-        return float(np.mean(np.array(quality_to_check[starting_index:ending_index])))
+        return float(np.mean(quality_to_check[starting_index:ending_index]))

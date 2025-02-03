@@ -183,9 +183,74 @@ def should_filter_read(read: Read, min_read_quality: int) -> bool:
     return False
 
 
+def try_mapping_using_specific_kmers(current_read_mapping,
+                                     current_unique_threshold: int) -> Tuple[READ_STATUS, int]:
+    """
+    This function is used in the reverse complement extension and checks without mapping
+    a read what would be its status after scanning through its specific kmers
+    :param current_unique_threshold:
+    :param current_read_mapping:
+    :return: A tuple with the read status and an integer that contains:
+    For UNIQUE_READ: the number of specific kmers for the genome mapped to it
+    For AMBIGUOUS_READ: the max number of total_kmers for the genomes mapped to it
+    For UNMAPPED_READ: -1
+    """
+    if len(current_read_mapping.specific_kmers) == 0:
+        return UNMAPPED_READ, -1
+    if len(current_read_mapping.specific_kmers_in_genomes) == 1:
+        genome_identifier = \
+            next(iter(current_read_mapping.specific_kmers_in_genomes))
+        return UNIQUE_READ, len(
+            current_read_mapping.specific_kmers_in_genomes[genome_identifier])
+
+    # By this point - there are at least two genomes that have specific kmers from this read
+    # hence, frequent, second_frequent won't return None
+    frequent, second_frequent = find_two_most_frequent_genomes(
+        current_read_mapping.specific_kmers_in_genomes)
+    frequency_difference = frequent[1] - second_frequent[1]
+    if frequency_difference >= current_unique_threshold:
+        return UNIQUE_READ, frequent[1]
+    else:
+        # the mapping is ambiguous, hence we need to calculate the total kmers for this read
+        return AMBIGUOUS_READ, len(current_read_mapping.specific_kmers) + len(
+            current_read_mapping.unspecific_kmers)
+
+
+def should_read_be_reversed(
+        read_status_if_mapped_forward: Tuple[READ_STATUS, int],
+        read_status_if_mapped_reversed: Tuple[READ_STATUS, int]) -> bool:
+    """
+    This function is used in the reverse complement extension and receives the
+    mapping results of both orientations.
+    It determines via a set of cases the best orientation to prefer
+    :param read_status_if_mapped_forward: Tuple containing the forward read status and it matching number
+    :param read_status_if_mapped_reversed: Tuple containing the reverse read status and it matching number
+    :return: True if reverse is preferable, False if forward is preferable
+    """
+    forward_status = read_status_if_mapped_forward[0]
+    forward_number = read_status_if_mapped_forward[1]
+    reverse_status = read_status_if_mapped_reversed[0]
+    reverse_number = read_status_if_mapped_reversed[1]
+    if forward_status == UNIQUE_READ and reverse_status == UNIQUE_READ:
+        return reverse_number > forward_number
+    if forward_status == UNIQUE_READ:
+        return False
+    if reverse_status == UNIQUE_READ:
+        return True
+
+    if forward_status == AMBIGUOUS_READ and reverse_status == AMBIGUOUS_READ:
+        return reverse_number > forward_number
+    # The reverse isn't unique, it's unmapped - hence return the forward is preferable
+    if reverse_status == AMBIGUOUS_READ:
+        return True
+    # By now - the reverse must be unmapped - hence return the forward orientation
+    return False
+
+
 def determine_best_mapping_for_read(read: Read,
                                     aligner_output: PseudoAlignerOutput,
                                     kmer_reference: KmerReference,
+                                    current_unique_threshold: int,
                                     **kwargs) -> ReadKmerMapping:
     """
     This function calculates the KmerMapping object of the current read.
@@ -193,6 +258,7 @@ def determine_best_mapping_for_read(read: Read,
     It does so by calculating the amount of specific kmers in each orientation
     If the reverse_complement flag isn't inserted, it returns the default forward orientation read kmer mapping
 
+    :param current_unique_threshold: the unique threshold for the alignment
     :param read: the current read
     :param aligner_output: the aligner_output object
     :param kmer_reference: the kmer_reference object
@@ -210,14 +276,19 @@ def determine_best_mapping_for_read(read: Read,
     filtered_quality_kmers_after_forward_check = aligner_output.filtered_quality_kmers
     current_read_mapping = forward_read_mapping
     if check_reverse_complement:
+        read_status_if_mapped_forward = try_mapping_using_specific_kmers(
+            current_read_mapping, current_unique_threshold)
         read.is_reversed = True
         reversed_read_mapping = extract_and_map_kmers_from_read(
             read,
             kmer_reference,
             aligner_output, **kwargs)
+        read_status_if_mapped_reversed = try_mapping_using_specific_kmers(
+            reversed_read_mapping, current_unique_threshold)
+        read_to_be_reversed = should_read_be_reversed(
+            read_status_if_mapped_forward, read_status_if_mapped_reversed)
         # In this case, and this case only - prefer the reverse mapping
-        if len(reversed_read_mapping.specific_kmers) > len(
-                forward_read_mapping.specific_kmers):
+        if read_to_be_reversed:
             current_read_mapping = reversed_read_mapping
             hr_kmers_diff = aligner_output.filtered_hr_kmers - filtered_hr_kmers_after_forward_check
             aligner_output.filtered_hr_kmers = filtered_hr_kmers_before_read_check + hr_kmers_diff
@@ -304,7 +375,7 @@ def extract_genomes_list(genome_list_str: Optional[str],
     return genome_list
 
 
-def initialize_filtering_stats(aligner_output:PseudoAlignerOutput, **kwargs):
+def initialize_filtering_stats(aligner_output: PseudoAlignerOutput, **kwargs):
     """
     This function initializes the filtering stats in the aligner_output
     :param aligner_output: the aligner output
@@ -320,6 +391,7 @@ def initialize_filtering_stats(aligner_output:PseudoAlignerOutput, **kwargs):
     max_genomes = kwargs.get("max_genomes")
     if max_genomes is not None:
         aligner_output.filtered_hr_kmers = 0
+
 
 def align_algorithm(fastq_file_path: str,
                     kmer_reference: KmerReference,
@@ -360,7 +432,8 @@ def align_algorithm(fastq_file_path: str,
                 raise ValueError("Duplicate reads detected")
             # Check whether the quality of the entire read is sufficient
             # same here for mypy...
-            if filter_read_by_quality and should_filter_read(read, min_read_quality):
+            if filter_read_by_quality and should_filter_read(read,
+                                                             min_read_quality):
                 aligner_output.filtered_quality_reads += 1
                 continue
             aligner_output.add_read(read)
@@ -368,6 +441,7 @@ def align_algorithm(fastq_file_path: str,
             current_read_mapping = determine_best_mapping_for_read(read,
                                                                    aligner_output,
                                                                    kmer_reference,
+                                                                   current_unique_threshold,
                                                                    **kwargs)
 
             if len(current_read_mapping.specific_kmers) == 0:

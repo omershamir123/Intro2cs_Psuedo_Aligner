@@ -24,10 +24,15 @@ FASTQ_FILE_SINGLE_READ = (b"@READ1\n"
                           b"+\n"
                           b"1111111111111111")
 
-FASTQ_FILE_REVERSE_SINGLE_READ = (b"@READ1\n"
+FASTQ_FILE_WITH_REVERSE_READS = (b"@READ1\n"
                                   b"GTGTAAAATTTTCGAT\n"
                                   b"+\n"
-                                  b"1111111111111111")
+                                  b"1111111111111111\n"
+                                  b"@READ2\n"
+                                  b"GTGTGAAAATTTTCGAT\n"
+                                  b"+\n"
+                                  b"11111111111111111"
+                                 )
 
 
 def test_add_read_update_stats():
@@ -349,28 +354,28 @@ def test_align_algorithm_reverse():
     This function checks the functionality of the align algorithm with the reverse complement extension
     :return:
     """
-    fastq_file_path = create_temporary_file(FASTQ_FILE_REVERSE_SINGLE_READ,
+    fastq_file_path = create_temporary_file(FASTQ_FILE_WITH_REVERSE_READS,
                                             FASTQ_FILE_TYPES[0])
     reference = build_testing_reference()
     aligner_output = align_algorithm(fastq_file_path, reference, 1, 1,
                                      reverse_complement=True)
     os.remove(fastq_file_path)
 
-    expected_reads_stats = {"unique_mapped_reads": 0,
-                            "ambiguous_mapped_reads": 1,
+    expected_reads_stats = {"unique_mapped_reads": 2,
+                            "ambiguous_mapped_reads": 0,
                             "unmapped_reads": 0}
     expected_mapped_genome_stats = {
         "Mouse_F": {"unique_reads": 0, "ambiguous_reads": 0},
         "Duck_F": {"unique_reads": 0, "ambiguous_reads": 0},
         "Otter_F": {"unique_reads": 0, "ambiguous_reads": 0},
-        "Turtle_F": {"unique_reads": 0, "ambiguous_reads": 0},
+        "Turtle_F": {"unique_reads": 1, "ambiguous_reads": 0},
         "Moose_F": {"unique_reads": 0, "ambiguous_reads": 0},
         "Virus_F": {"unique_reads": 0, "ambiguous_reads": 0},
         "Mouse_R": {"unique_reads": 0, "ambiguous_reads": 0},
-        "Duck_R": {"unique_reads": 0, "ambiguous_reads": 1},
+        "Duck_R": {"unique_reads": 0, "ambiguous_reads": 0},
         "Otter_R": {"unique_reads": 0, "ambiguous_reads": 0},
-        "Turtle_R": {"unique_reads": 0, "ambiguous_reads": 1},
-        "Moose_R": {"unique_reads": 0, "ambiguous_reads": 1},
+        "Turtle_R": {"unique_reads": 0, "ambiguous_reads": 0},
+        "Moose_R": {"unique_reads": 1, "ambiguous_reads": 0},
         "Virus_R": {"unique_reads": 0, "ambiguous_reads": 0}
     }
 

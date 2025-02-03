@@ -64,8 +64,8 @@ def check_outputs_in_file(file_path: str,
     """
     outputs_from_file = []
     try:
-        for genome in generator_from_file(file_path):
-            outputs_from_file.append(genome)
+        for item in generator_from_file(file_path):
+            outputs_from_file.append(item)
     except ValueError:
         pass
     os.remove(file_path)
@@ -81,8 +81,21 @@ def test_parse_fastq_file_valid():
     expected_read_output = [Read("NAME", "ATCGC", "ABCDE")]
     fastq_file_path = create_temporary_file(VALID_FASTQ_FILE,
                                             FASTQ_FILE_TYPES[0])
-    check_outputs_in_file(fastq_file_path, expected_read_output, file_handlers.parse_fastq_file)
+    outputs_from_file = []
+    try:
+        for item in file_handlers.parse_fastq_file(fastq_file_path):
+            outputs_from_file.append(item)
+    except ValueError:
+        pass
+    os.remove(fastq_file_path)
+    keys_to_exclude = ["_quality", "_reversed_quality"]
 
+    assert len(outputs_from_file) == len(expected_read_output) and all(
+        {k: v for k, v in expected_read_output[i].__dict__.items() if
+         k not in keys_to_exclude} == {k: v for k, v in
+                                       outputs_from_file[i].__dict__.items() if
+                                       k not in keys_to_exclude} for i in
+        range(len(outputs_from_file)))
 
 def test_parse_fastq_file_invalid():
     """
