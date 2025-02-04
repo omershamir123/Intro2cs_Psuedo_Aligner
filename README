@@ -1,5 +1,6 @@
 # Shotgun Metagenomics Pseudo-alignment / Omer Shamir
 
+NOTE: all data files and code is also available in my GitHub repository - https://github.com/omershamir123/Intro2cs_Psuedo_Aligner
 NOTE: in order to see what arguments must be given for the program to run. enter main.py --help 
 How the program runs:
 From main.py - the argsparse parses the parameters and enforces some constraints - integers, required types, store-true types...

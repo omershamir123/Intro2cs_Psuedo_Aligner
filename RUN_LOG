@@ -1,3 +1,4 @@
+# All data files used in video are in my GitHub repo - https://github.com/omershamir123/Intro2cs_Psuedo_Aligner
 # 3:37
 # Dumpalign task with given exaple_genomes.fa + example_reads.fq
 python main.py -t dumpalign -g .\example_simulated_data\example_genomes.fa -k 30 --reads .\example_simulated_data\example_reads.fq
