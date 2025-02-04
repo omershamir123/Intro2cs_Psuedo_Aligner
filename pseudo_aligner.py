@@ -20,6 +20,7 @@ class PseudoAlignerOutput:
     """
     This class is an object that holds data regarding a specific pseudo align algorithm run
     """
+
     def __init__(self, kmer_reference: KmerReference,
                  coverage_included: bool = False,
                  genome_list_str: Optional[str] = None):
@@ -111,6 +112,7 @@ class AlnFileDataObject:
     This class holds the relevant data from the result of a pseudo align algorithm run.
     It is the object that is being put inside an ALN file
     """
+
     def __init__(self, aligner_output: PseudoAlignerOutput, is_reversed: bool):
         self.genomes_db = aligner_output.kmer_reference.genomes_db
         self._unique_mapped_reads = aligner_output.unique_mapped_reads
@@ -190,7 +192,8 @@ def should_filter_read(read: Read, min_read_quality: int) -> bool:
 
 
 def try_mapping_using_specific_kmers(current_read_mapping,
-                                     current_unique_threshold: int) -> Tuple[READ_STATUS, int]:
+                                     current_unique_threshold: int) -> Tuple[
+    READ_STATUS, int]:
     """
     This function is used in the reverse complement extension and checks without mapping
     a read what would be its status after scanning through its specific kmers
@@ -217,9 +220,14 @@ def try_mapping_using_specific_kmers(current_read_mapping,
     if frequency_difference >= current_unique_threshold:
         return UNIQUE_READ, frequent[1]
     else:
-        # the mapping is ambiguous, hence we need to calculate the total kmers for this read
-        return AMBIGUOUS_READ, len(current_read_mapping.specific_kmers) + len(
-            current_read_mapping.unspecific_kmers)
+        # the mapping is ambiguous, hence we need to calculate the max total kmers of a single genome for this read
+        total_kmers_in_genomes_dict = {
+            genome: current_read_mapping.specific_kmers_in_genomes.get(genome,
+                                                                    []) + current_read_mapping.unspecific_kmers_in_genomes.get(
+                genome, []) for genome in
+            current_read_mapping.specific_kmers_in_genomes.keys() | current_read_mapping.unspecific_kmers_in_genomes.keys()}
+
+        return AMBIGUOUS_READ, max(len(kmer_list) for kmer_list in total_kmers_in_genomes_dict.values())
 
 
 def should_read_be_reversed(
