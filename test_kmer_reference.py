@@ -50,7 +50,7 @@ FULL_FASTA_EXPECTED_OUTPUT = {"Kmers": FULL_FASTA_EXPECTED_KMER_DB,
 SIMILARITY_OUTPUT = {"Similarity":
                          {"Mouse":
                               {"kept": "no", "unique_kmers": 0,
-                               "total_kmers": 5,
+                               "total_kmers": 1,
                                "genome_length": 8, "similar_to": "Turtle",
                                "similarity_score": 1.0},
                           "Duck": {"kept": "yes", "unique_kmers": 1,
@@ -58,15 +58,15 @@ SIMILARITY_OUTPUT = {"Similarity":
                                    "genome_length": 4, "similar_to": "NA",
                                    "similarity_score": "NA"},
                           "Otter": {"kept": "no", "unique_kmers": 0,
-                                    "total_kmers": 5,
+                                    "total_kmers": 1,
                                     "genome_length": 21, "similar_to": "Turtle",
                                     "similarity_score": 1.0},
                           "Turtle": {"kept": "yes", "unique_kmers": 3,
-                                     "total_kmers": 9,
+                                     "total_kmers": 5,
                                      "genome_length": 12, "similar_to": "NA",
                                      "similarity_score": "NA"},
-                          "Moose": {"kept": "yes", "unique_kmers": 9,
-                                    "total_kmers": 9,
+                          "Moose": {"kept": "yes", "unique_kmers": 2,
+                                    "total_kmers": 2,
                                     "genome_length": 13, "similar_to": "NA",
                                     "similarity_score": "NA"},
                           "Virus": {"kept": "yes", "unique_kmers": 0,
@@ -188,7 +188,15 @@ def test_filter_similar():
     With the given fasta file it shows which genomes were filtered out due to similarity
     :return:
     """
-    reference = build_testing_reference()
+    genome_fasta_file = create_temporary_file(FULL_FASTA_FILE,
+                                              FASTA_FILE_TYPES[0])
+    reference = KmerReference(KMER_SIZE)
+    build_successful = reference.build_kmer_reference(genome_fasta_file)
+    reference.calculate_kmers_type(count_duplicates=False)
+    os.remove(genome_fasta_file)
+
+    assert build_successful
+
     reference.filter_genomes_logic(0.95)
     assert reference.print_similarity_results() == json.dumps(SIMILARITY_OUTPUT)
     assert len(reference.genomes_db) == 4

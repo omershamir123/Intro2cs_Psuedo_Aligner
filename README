@@ -32,7 +32,7 @@ IMPORTANT: the coverage report is saved under the AlnFileDataObject and will onl
 * 4.4 - EXTSIM
 This extension's purpose is to avoid unmapped/ambiguous reads of genomes that are highly similar.
 Note: In this extension we count K1 + K2 as a Set of kmers.
-Meaning the similarity score is based on duplicate kmers not being double-counted!
+Meaning the similarity score AND the sorting of the genomes is based on duplicate kmers not being double-counted!
 IMPORTANT: the similarity report is saved under the KmerReference(KDB file) and will only be printed out in the dumpref command and not in the reference command
 
 

@@ -17,12 +17,14 @@ from pseudo_aligner import AlnFileDataObject
 from validators import validate_above_value
 
 
-def build_reference(kmer_size: int, genomefile: str) -> Optional[KmerReference]:
+def build_reference(kmer_size: int, genomefile: str,
+                    count_duplicates: bool = True) -> Optional[KmerReference]:
     """
     This function receives the kmer_size and the genome file path and builds a kmer-reference object
     If one of the steps in the build phase isn't successful, the returned object is None
     :param genomefile: the path to the FASTA file
     :param kmer_size: the size of each Kmer in our reference
+    :param count_duplicates: should the reference count duplicate kmers
     :return: the KmerReference object if the build was successful, otherwise None
     """
     try:
@@ -34,7 +36,7 @@ def build_reference(kmer_size: int, genomefile: str) -> Optional[KmerReference]:
     build_successful = reference.build_kmer_reference(genomefile)
     # If build was not successful for various reasons, the function will not continue on
     if build_successful:
-        reference.calculate_kmers_type()
+        reference.calculate_kmers_type(count_duplicates=count_duplicates)
         return reference
     return None
 
@@ -57,6 +59,7 @@ def validate_similarity_threshold(similarity_threshold: float) -> bool:
     except (ValueError, TypeError) as e:
         return True
 
+
 def reference_command(args: Namespace) -> None:
     """
     This function carries out the reference command - of building a reference and writing it to a kdb file
@@ -67,8 +70,9 @@ def reference_command(args: Namespace) -> None:
         print(
             "For the reference command - a genome file, a reference file and a kmer-size must be provided")
         return
-
-    reference = build_reference(args.kmer_size, args.genomefile)
+    count_duplicates = False if args.filter_similar else True
+    reference = build_reference(args.kmer_size, args.genomefile,
+                                count_duplicates)
     if reference is not None:
         # By now we have built the entire reference from all genomes.
         # Now, if filer-similar flag is True we check the similarity score between each genome
@@ -77,7 +81,7 @@ def reference_command(args: Namespace) -> None:
             if not validate_similarity_threshold(args.similarity_threshold):
                 return
             reference.filter_genomes_logic(args.similarity_threshold)
-            reference.calculate_kmers_type()
+            reference.calculate_kmers_type(count_duplicates=True)
         file_handlers.write_to_pickle_file(args.referencefile, reference,
                                            KDB_FILE_TYPES)
 
@@ -96,12 +100,14 @@ def extract_reference(args: Namespace) -> Optional[KmerReference]:
                 "Both a genome file and a reference file were provided - invalid input for the {} command".format(
                     args.task))
             return None
-        reference = build_reference(args.kmer_size, args.genomefile)
+        count_duplicates = False if args.filter_similar and args.task == "dumpref" else True
+        reference = build_reference(args.kmer_size, args.genomefile,
+                                    count_duplicates=count_duplicates)
         if reference is not None and args.filter_similar and args.task == "dumpref":
             if not validate_similarity_threshold(args.similarity_threshold):
                 return
             reference.filter_genomes_logic(args.similarity_threshold)
-            reference.calculate_kmers_type()
+            reference.calculate_kmers_type(count_duplicates=True)
     else:
         if not args.referencefile:
             print(
@@ -129,6 +135,7 @@ def dumpref_command(args: Namespace) -> None:
         if reference.check_reference_was_filtered():
             print(reference.print_similarity_results())
 
+
 def align_command(args: Namespace) -> None:
     """
     This function handles the align command - runs the pseudo align algorithm and saves the output to an aln file
@@ -150,13 +157,16 @@ def align_command(args: Namespace) -> None:
             return
         align_output = pseudo_aligner.align_algorithm(args.reads, reference,
                                                       args.unique_threshold,
-                                                      args.ambiguous_threhold, **vars(args))
+                                                      args.ambiguous_threhold,
+                                                      **vars(args))
         if align_output is not None:
-            align_file_object = align_output.convert_to_aln_object(args.reverse_complement)
+            align_file_object = align_output.convert_to_aln_object(
+                args.reverse_complement)
             if args.coverage:
                 align_file_object.coverage_logic(args.full_coverage,
-                                                         args.min_coverage)
-            file_handlers.write_to_pickle_file(args.alignfile, align_file_object,
+                                                 args.min_coverage)
+            file_handlers.write_to_pickle_file(args.alignfile,
+                                               align_file_object,
                                                ALN_FILE_TYPES)
 
 
@@ -185,15 +195,18 @@ def dumpalign_command(args: Namespace) -> None:
                 return
             align_output = pseudo_aligner.align_algorithm(args.reads, reference,
                                                           args.unique_threshold,
-                                                          args.ambiguous_threhold, **vars(args))
+                                                          args.ambiguous_threhold,
+                                                          **vars(args))
             if align_output is not None:
-                align_file_object = align_output.convert_to_aln_object(args.reverse_complement)
+                align_file_object = align_output.convert_to_aln_object(
+                    args.reverse_complement)
                 if args.coverage:
                     align_file_object.coverage_logic(args.full_coverage,
                                                      args.min_coverage)
             else:
                 align_file_object = None
-    if align_file_object is not None and isinstance(align_file_object, AlnFileDataObject):
+    if align_file_object is not None and isinstance(align_file_object,
+                                                    AlnFileDataObject):
         print(align_file_object.to_json())
         if align_file_object.check_coverage_was_applied():
             print(align_file_object.print_coverage_results())

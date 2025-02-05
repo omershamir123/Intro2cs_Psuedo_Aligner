@@ -108,17 +108,33 @@ class KmerReference:
             return False
         return True
 
-    def calculate_kmers_type(self) -> None:
-        for genome in self._genomes_db.values():
-            genome.unique_kmers = 0
-            genome.multi_mapping_kmers = 0
-            for kmer in genome.kmers_set:
-                if len(self._kmer_db[kmer]) == 1:
-                    genome.unique_kmers += len(
-                        self._kmer_db[kmer][genome.identifier])
-                else:
-                    genome.multi_mapping_kmers += len(
-                        self._kmer_db[kmer][genome.identifier])
+    def calculate_kmers_type(self, count_duplicates:bool = True) -> None:
+        """
+        This function calculates each genome's unique and multi-map kmers count
+        There is a flag that dictates whether duplicate kmers are counted more than once
+        :param count_duplicates: should duplicate kmers be counted more than once
+        :return: None
+        """
+        if count_duplicates:
+            for genome in self._genomes_db.values():
+                genome.unique_kmers = 0
+                genome.multi_mapping_kmers = 0
+                for kmer in genome.kmers_set:
+                    if len(self._kmer_db[kmer]) == 1:
+                        genome.unique_kmers += len(
+                            self._kmer_db[kmer][genome.identifier])
+                    else:
+                        genome.multi_mapping_kmers += len(
+                            self._kmer_db[kmer][genome.identifier])
+        else:
+            for genome in self._genomes_db.values():
+                genome.unique_kmers = 0
+                genome.multi_mapping_kmers = 0
+                for kmer in genome.kmers_set:
+                    if len(self._kmer_db[kmer]) == 1:
+                        genome.unique_kmers += 1
+                    else:
+                        genome.multi_mapping_kmers += 1
 
     def genome_db_to_dict(self) -> Dict[str, Dict[str, int]]:
         return {k: v.genome_ref_to_dict() for k, v in self.genomes_db.items()}
