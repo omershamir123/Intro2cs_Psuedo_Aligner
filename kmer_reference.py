@@ -115,26 +115,28 @@ class KmerReference:
         :param count_duplicates: should duplicate kmers be counted more than once
         :return: None
         """
+        for genome in self._genomes_db.values():
+            genome.unique_kmers = 0
+            genome.multi_mapping_kmers = 0
         if count_duplicates:
-            for genome in self._genomes_db.values():
-                genome.unique_kmers = 0
-                genome.multi_mapping_kmers = 0
-                for kmer in genome.kmers_set:
-                    if len(self._kmer_db[kmer]) == 1:
-                        genome.unique_kmers += len(
-                            self._kmer_db[kmer][genome.identifier])
-                    else:
-                        genome.multi_mapping_kmers += len(
-                            self._kmer_db[kmer][genome.identifier])
+            for kmer_occurrence in self._kmer_db.values():
+                if len(kmer_occurrence) == 1:
+                    genome_identifier = next(iter(kmer_occurrence))
+                    # self._genomes_db[genome_identifier].unique_kmers += 1
+                    self._genomes_db[genome_identifier].unique_kmers += len(kmer_occurrence[genome_identifier])
+                else:
+                    for genome_identifier in kmer_occurrence:
+                        self._genomes_db[genome_identifier].multi_mapping_kmers += len(kmer_occurrence[genome_identifier])
+                        # self._genomes_db[genome_identifier].multi_mapping_kmers += 1
+
         else:
-            for genome in self._genomes_db.values():
-                genome.unique_kmers = 0
-                genome.multi_mapping_kmers = 0
-                for kmer in genome.kmers_set:
-                    if len(self._kmer_db[kmer]) == 1:
-                        genome.unique_kmers += 1
-                    else:
-                        genome.multi_mapping_kmers += 1
+            for kmer_occurrence in self._kmer_db.values():
+                if len(kmer_occurrence) == 1:
+                    genome_identifier = next(iter(kmer_occurrence))
+                    self._genomes_db[genome_identifier].unique_kmers += 1
+                else:
+                    for genome_identifier in kmer_occurrence:
+                        self._genomes_db[genome_identifier].multi_mapping_kmers += 1
 
     def genome_db_to_dict(self) -> Dict[str, Dict[str, int]]:
         return {k: v.genome_ref_to_dict() for k, v in self.genomes_db.items()}
